@@ -71,4 +71,3 @@ This is a portfolio piece, so the focus is on UI polish and interaction quality 
 ## License
 
 Personal portfolio piece. IBM Plex Sans is licensed under the SIL Open Font License.
-# workspace
