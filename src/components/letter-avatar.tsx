@@ -5,6 +5,7 @@ type Props = {
   size?: "xs" | "sm" | "md" | "lg";
   filled?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 };
 
 const sizeMap = {
@@ -19,9 +20,11 @@ export function LetterAvatar({
   size = "sm",
   filled = false,
   className,
+  style,
 }: Props) {
   return (
     <span
+      style={style}
       className={cn(
         "inline-flex items-center justify-center rounded-[3px] font-medium select-none flex-shrink-0",
         sizeMap[size],

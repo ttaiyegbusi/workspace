@@ -16,9 +16,17 @@ export type Team = {
   name: string;
   initial: string;
   locked: boolean;
+  color?: string; // hex color for team badge
 };
 
-export type DocFileType = "pdf" | "xls" | "fig" | "audio" | "doc" | "img" | "zip";
+export type DocFileType =
+  | "pdf"
+  | "xls"
+  | "fig"
+  | "audio"
+  | "doc"
+  | "img"
+  | "zip";
 
 export type DocItem = {
   id: string;

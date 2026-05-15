@@ -30,6 +30,7 @@ type AppState = {
     initial: string;
     locked: boolean;
   }) => string;
+  updateTeamColor: (teamId: string, color: string) => void;
 
   // tasks
   addTask: (teamId: string, title: string, createdBy: string) => string;
@@ -112,6 +113,11 @@ export const useStore = create<AppState>()(
         }));
         return id;
       },
+
+      updateTeamColor: (teamId, color) =>
+        set((s) => ({
+          teams: s.teams.map((t) => (t.id === teamId ? { ...t, color } : t)),
+        })),
 
       addTask: (teamId, title, createdBy) => {
         const id = `task-${Date.now()}`;
