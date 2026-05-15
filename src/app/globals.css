@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+/* ---------- IBM Plex Sans ---------- */
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------- Theme tokens ---------- */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f5f5;
+  --color-border: #ececec;
+  --color-border-strong: #e0e0e0;
+  --color-text: #1a1a1a;
+  --color-text-muted: #6b6b6b;
+  --color-text-subtle: #9a9a9a;
+  --color-accent: #1a1a1a;
+  --color-hover: #f0f0f0;
+  --color-selected: #ededed;
+  --color-pill-bg: #f2f2f2;
+  --color-pill-text: #6b6b6b;
+  --color-danger: #b91c1c;
+}
+
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f5f5f5;
+  --border: #ececec;
+  --border-strong: #e0e0e0;
+  --text: #1a1a1a;
+  --text-muted: #6b6b6b;
+  --text-subtle: #9a9a9a;
+  --hover: #f0f0f0;
+  --selected: #ededed;
+  --pill-bg: #f2f2f2;
+  --pill-text: #6b6b6b;
+  --danger: #b91c1c;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.dark {
+  --bg: #0e0e0e;
+  --surface: #161616;
+  --surface-2: #1c1c1c;
+  --border: #262626;
+  --border-strong: #333333;
+  --text: #ededed;
+  --text-muted: #9a9a9a;
+  --text-subtle: #6b6b6b;
+  --hover: #1f1f1f;
+  --selected: #242424;
+  --pill-bg: #1f1f1f;
+  --pill-text: #b3b3b3;
+  --danger: #f87171;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Base ---------- */
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "ss01", "ss02";
+  letter-spacing: -0.005em;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+/* Hide scrollbar but keep functionality */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Smooth theme transitions */
+html.transitioning,
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: background-color 200ms ease, border-color 200ms ease,
+    color 200ms ease !important;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Reset list */
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Selection */
+::selection {
+  background: var(--text);
+  color: var(--surface);
+}
