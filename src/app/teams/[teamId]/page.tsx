@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import { useRouter, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   User as UserIcon,
   Flag,
@@ -9,11 +9,15 @@ import {
   Tag,
   Paperclip,
   Smile,
+  ExternalLink,
+  Users as UsersIcon,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Pill } from "@/components/pill";
 import { PriorityPill } from "@/components/priority-pill";
 import { LetterAvatar } from "@/components/letter-avatar";
+import { SharePopover } from "@/components/share-popover";
+import { ShareSuccessModal } from "@/components/share-success-modal";
 import { useStore } from "@/lib/store";
 import { currentUser } from "@/data/workspace";
 import { docs } from "@/data/docs";
@@ -30,8 +34,6 @@ export default function TeamPage({
   const teams = useStore((s) => s.teams);
   const team = teams.find((t) => t.id === teamId);
 
-  // Teams could be loaded from localStorage after hydration; render a
-  // minimal fallback while we're certain it's missing.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -39,12 +41,25 @@ export default function TeamPage({
 
   const [tab, setTab] = useState<Tab>("overview");
 
+  // Share state lives at the page level since the Share button is in the tab bar
+  const [shareOpen, setShareOpen] = useState(false);
+  const [successEmail, setSuccessEmail] = useState<string | null>(null);
+
+  // Pull the active task id for the current team to know what to share
+  const selectedTaskId = useStore((s) =>
+    team ? s.selectedTaskByTeam[team.id] : null,
+  );
+  const tasks = useStore((s) =>
+    team ? s.tasks.filter((t) => t.teamId === team.id) : [],
+  );
+  const activeTask = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
+
   return (
     <>
       <TopBar title={team?.name ?? ""} />
 
-      <div className="border-b border-[var(--border)] px-5 md:px-8 overflow-x-auto scroll-thin">
-        <div className="flex gap-5 md:gap-7">
+      <div className="relative border-b border-[var(--border)] px-5 md:px-8 flex items-center">
+        <div className="flex gap-5 md:gap-7 overflow-x-auto scroll-thin flex-1">
           <TabBtn
             label="Overview"
             active={tab === "overview"}
@@ -66,12 +81,39 @@ export default function TeamPage({
             onClick={() => setTab("list-view")}
           />
         </div>
+
+        {/* Share button — only shown when there's an active task to share */}
+        {tab === "overview" && activeTask && (
+          <button
+            data-share-trigger
+            onClick={() => setShareOpen((v) => !v)}
+            className="ml-3 flex items-center gap-1.5 h-8 px-2.5 rounded text-[13px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0"
+          >
+            <span>Share</span>
+            <ExternalLink size={11} strokeWidth={1.6} />
+          </button>
+        )}
+
+        {activeTask && (
+          <SharePopover
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            taskId={activeTask.id}
+            onSent={(email) => setSuccessEmail(email)}
+          />
+        )}
       </div>
 
       {tab === "overview" && team && <Overview teamId={team.id} />}
       {tab === "getting-started" && <ComingSoonInline label="Getting Started" />}
       {tab === "board" && <ComingSoonInline label="Board" />}
       {tab === "list-view" && <ComingSoonInline label="List View" />}
+
+      <ShareSuccessModal
+        open={successEmail !== null}
+        email={successEmail ?? ""}
+        onClose={() => setSuccessEmail(null)}
+      />
     </>
   );
 }
@@ -120,11 +162,8 @@ function ComingSoonInline({ label }: { label: string }) {
 function Overview({ teamId }: { teamId: string }) {
   const tasks = useStore((s) => s.tasks.filter((t) => t.teamId === teamId));
   const selectedTaskId = useStore((s) => s.selectedTaskByTeam[teamId]);
-  const addTask = useStore((s) => s.addTask);
   const updateTaskTitle = useStore((s) => s.updateTaskTitle);
 
-  // If we have any tasks, pick the selected one or fall back to first.
-  // If we have *no* tasks, render the empty form (matches Product Design screenshot).
   const task = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
   if (!task) {
@@ -135,7 +174,6 @@ function Overview({ teamId }: { teamId: string }) {
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
       <div className="flex-1 overflow-y-auto scroll-thin">
         <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
-          {/* Inline new-task drafting field */}
           <NewTaskDrafter teamId={teamId} />
 
           <TaskTitle
@@ -185,6 +223,14 @@ function Overview({ teamId }: { teamId: string }) {
                 })}
               </div>
             </MetaRow>
+            {(task.peopleAccess.length > 0 || task.teamAccess.length > 0) && (
+              <MetaRow icon={UsersIcon} label="Shared with">
+                <SharedWith
+                  people={task.peopleAccess}
+                  teams={task.teamAccess}
+                />
+              </MetaRow>
+            )}
           </dl>
 
           <div className="mt-8 text-[14px] leading-relaxed whitespace-pre-wrap text-[var(--text)]">
@@ -216,16 +262,59 @@ function Overview({ teamId }: { teamId: string }) {
   );
 }
 
-// ---------- Empty team form ----------
-// Mirrors the Product Design screenshot: a non-functional task form with
-// placeholder labels, sitting alongside an Activities rail with a single
-// system entry ("Temitope Aiyegbusi created a Task" — generated when the
-// team was created).
+// ---------- Shared with: stack of recipient avatars + count overflow ----------
+
+function SharedWith({
+  people,
+  teams,
+}: {
+  people: { id: string; name: string; email: string }[];
+  teams: { id: string; name: string; initial: string }[];
+}) {
+  const MAX_DISPLAY = 5;
+  // Combine into a single visual stack — people first, then teams
+  const combined: Array<{ key: string; initial: string; label: string }> = [
+    ...people.map((p) => ({
+      key: `p-${p.id}`,
+      initial: p.name.charAt(0).toUpperCase(),
+      label: `${p.name} (${p.email})`,
+    })),
+    ...teams.map((t) => ({
+      key: `t-${t.id}`,
+      initial: t.initial,
+      label: t.name,
+    })),
+  ];
+  const visible = combined.slice(0, MAX_DISPLAY);
+  const overflow = combined.length - visible.length;
+
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-1.5">
+        {visible.map((v) => (
+          <div
+            key={v.key}
+            title={v.label}
+            className="ring-2 ring-[var(--bg)] rounded-[3px]"
+          >
+            <LetterAvatar letter={v.initial} size="sm" />
+          </div>
+        ))}
+      </div>
+      {overflow > 0 && (
+        <span className="ml-2 text-[12px] text-[var(--text-muted)]">
+          +{overflow} more
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------- Empty team form (unchanged from previous build) ----------
 
 function EmptyTeamForm({ teamId }: { teamId: string }) {
   const addTask = useStore((s) => s.addTask);
   const [subject, setSubject] = useState("");
-  // Created-by defaults to current user but stays "Type here"-looking until filled
   const [createdBy, setCreatedBy] = useState("");
   const [dueDate, setDueDate] = useState("");
 
@@ -296,7 +385,6 @@ function EmptyTeamForm({ teamId }: { teamId: string }) {
         </div>
       </div>
 
-      {/* Right rail with the single system Activity */}
       <EmptyRightPanel />
     </div>
   );
@@ -314,7 +402,6 @@ function PlaceholderBtn({ children }: { children: React.ReactNode }) {
 }
 
 function EmptyRightPanel() {
-  // Use a stable creation time = today, since this is the team's "creation activity"
   const createdAt = new Date();
   const timestamp = `${createdAt.toLocaleDateString("en-US", {
     day: "numeric",
@@ -372,8 +459,6 @@ function EmptyRightPanel() {
   );
 }
 
-// ---------- Activity item with timeline thread ----------
-
 function ActivityItem({
   authorName,
   action,
@@ -410,8 +495,6 @@ function ActivityItem({
     </li>
   );
 }
-
-// ---------- The drafter used when at least one task exists ----------
 
 function NewTaskDrafter({ teamId }: { teamId: string }) {
   const addTask = useStore((s) => s.addTask);

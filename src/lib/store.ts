@@ -8,6 +8,8 @@ import type {
   Activity,
   Team,
   Notification,
+  PersonAccess,
+  SharePermission,
 } from "@/lib/types";
 import { seedTasks } from "@/data/tasks";
 import { teams as seedTeams } from "@/data/workspace";
@@ -17,7 +19,7 @@ type AppState = {
   tasks: Task[];
   teams: Team[];
   notifications: Notification[];
-  selectedTaskByTeam: Record<string, string | null>; // teamId -> taskId | null (null = empty state)
+  selectedTaskByTeam: Record<string, string | null>;
   selectedInboxId: string | null;
   sidebarCollapsed: boolean;
   mobileSidebarOpen: boolean;
@@ -34,6 +36,24 @@ type AppState = {
   selectTask: (teamId: string, taskId: string | null) => void;
   updateTaskTitle: (taskId: string, title: string) => void;
   addComment: (taskId: string, body: string, authorName: string) => void;
+
+  // share
+  addPersonAccess: (
+    taskId: string,
+    person: Omit<PersonAccess, "id"> & { id?: string },
+  ) => void;
+  removePersonAccess: (taskId: string, personId: string) => void;
+  updatePersonPermission: (
+    taskId: string,
+    personId: string,
+    permission: SharePermission,
+  ) => void;
+  removeTeamAccess: (taskId: string, teamAccessId: string) => void;
+  updateTeamAccessPermission: (
+    taskId: string,
+    teamAccessId: string,
+    permission: SharePermission,
+  ) => void;
 
   // inbox
   selectInbox: (id: string | null) => void;
@@ -106,6 +126,8 @@ export const useStore = create<AppState>()(
           dueDate: nowISO(),
           tags: [],
           attachedDocIds: [],
+          peopleAccess: [],
+          teamAccess: [],
           comments: [],
           activities: [
             {
@@ -159,6 +181,88 @@ export const useStore = create<AppState>()(
         }));
       },
 
+      addPersonAccess: (taskId, person) => {
+        const id = person.id ?? `p-${Date.now()}`;
+        const activity: Activity = {
+          id: `a-${Date.now()}`,
+          authorName: "Temitope Aiyegbusi",
+          action: `shared with ${person.email}`,
+          createdAt: nowISO(),
+        };
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            if (t.id !== taskId) return t;
+            // Don't duplicate if email already present
+            if (
+              t.peopleAccess.some(
+                (p) => p.email.toLowerCase() === person.email.toLowerCase(),
+              )
+            ) {
+              return t;
+            }
+            return {
+              ...t,
+              peopleAccess: [...t.peopleAccess, { ...person, id }],
+              activities: [...t.activities, activity],
+            };
+          }),
+        }));
+      },
+
+      removePersonAccess: (taskId, personId) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  peopleAccess: t.peopleAccess.filter((p) => p.id !== personId),
+                }
+              : t,
+          ),
+        })),
+
+      updatePersonPermission: (taskId, personId, permission) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  peopleAccess: t.peopleAccess.map((p) =>
+                    p.id === personId ? { ...p, permission } : p,
+                  ),
+                }
+              : t,
+          ),
+        })),
+
+      removeTeamAccess: (taskId, teamAccessId) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  teamAccess: t.teamAccess.filter(
+                    (ta) => ta.id !== teamAccessId,
+                  ),
+                }
+              : t,
+          ),
+        })),
+
+      updateTeamAccessPermission: (taskId, teamAccessId, permission) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  teamAccess: t.teamAccess.map((ta) =>
+                    ta.id === teamAccessId ? { ...ta, permission } : ta,
+                  ),
+                }
+              : t,
+          ),
+        })),
+
       selectInbox: (id) => set({ selectedInboxId: id }),
 
       markNotificationRead: (id) =>
@@ -179,7 +283,7 @@ export const useStore = create<AppState>()(
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
     }),
     {
-      name: "workspace-app-state-v2",
+      name: "workspace-app-state-v3",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         tasks: s.tasks,

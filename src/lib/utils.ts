@@ -43,3 +43,28 @@ export function formatTime(dateISO: string) {
     hour12: true,
   });
 }
+
+/**
+ * Strict validation: the domain part of the email must equal "gmail.com".
+ * Per the share modal's requirement: the Share CTA stays disabled until
+ * the address is a Gmail address.
+ *
+ * Examples:
+ *   tope@gmail.com         → true
+ *   tope@gmail.co          → false
+ *   tope@gmail.com.uk      → false (domain is "gmail.com.uk", not "gmail.com")
+ *   tope@notgmail.com      → false (domain is "notgmail.com")
+ *   not.an.email           → false
+ */
+export function isGmail(email: string): boolean {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) return false;
+  const at = trimmed.lastIndexOf("@");
+  if (at <= 0 || at === trimmed.length - 1) return false;
+  const local = trimmed.slice(0, at);
+  const domain = trimmed.slice(at + 1);
+  if (!local || domain !== "gmail.com") return false;
+  // Local part can't contain whitespace
+  if (/\s/.test(local)) return false;
+  return true;
+}

@@ -59,6 +59,22 @@ export type Activity = {
   createdAt: string;
 };
 
+export type SharePermission = "View" | "Comment" | "Edit";
+
+export type PersonAccess = {
+  id: string;
+  name: string;
+  email: string;
+  permission: SharePermission;
+};
+
+export type TeamAccess = {
+  id: string; // team id (or synthetic for seeded teams not in workspace)
+  name: string;
+  initial: string;
+  permission: SharePermission;
+};
+
 export type Task = {
   id: string;
   teamId: string;
@@ -72,6 +88,8 @@ export type Task = {
   attachedDocIds: string[];
   comments: Comment[];
   activities: Activity[];
+  peopleAccess: PersonAccess[];
+  teamAccess: TeamAccess[];
 };
 
 export type Contact = {
