@@ -22,11 +22,6 @@ import {
   BookOpen,
   Lightbulb,
   LogOut,
-  MoreHorizontal,
-  Copy,
-  Heart,
-  Eye,
-  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
@@ -201,147 +196,34 @@ function TeamItem({
   active: boolean;
   collapsed: boolean;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const updateTeamColor = useStore((s) => s.updateTeamColor);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-        setColorPickerOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const colors = [
-    "#ef4444",
-    "#f97316",
-    "#eab308",
-    "#22c55e",
-    "#06b6d4",
-    "#0ea5e9",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#64748b",
-  ];
-
   return (
-    <div ref={menuRef} className="relative">
-      <div className="flex items-center gap-1 group">
-        <Link
-          href={`/teams/${team.id}`}
-          className={cn(
-            "flex-1 h-8 flex items-center gap-2.5 px-2 rounded text-sm transition-colors",
-            active
-              ? "bg-[var(--selected)] text-[var(--text)]"
-              : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]",
-            collapsed && "md:justify-center md:px-0",
-          )}
-        >
-          <LetterAvatar
-            letter={team.initial}
-            size="xs"
-            style={
-              team.color
-                ? { backgroundColor: team.color, borderColor: team.color }
-                : {}
-            }
-          />
-          <span className={cn("flex-1 truncate", collapsed && "md:hidden")}>
-            {team.name}
-          </span>
-          {team.locked && !collapsed && (
-            <Lock
-              size={11}
-              className="text-[var(--text-subtle)] flex-shrink-0"
-            />
-          )}
-        </Link>
-
-        {!collapsed && (
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--hover)] text-[var(--text-muted)] transition-opacity"
-            title="Team options"
-          >
-            <ChevronDown size={14} />
-          </button>
-        )}
-      </div>
-
-      {menuOpen && !collapsed && (
-        <div className="absolute top-full left-0 mt-1 w-[200px] z-50 rounded-md bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)] py-1">
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <span>Rename</span>
-          </button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <Copy size={14} />
-            <span>Copy Link</span>
-          </button>
-          <button
-            onClick={() => setColorPickerOpen(!colorPickerOpen)}
-            className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left relative"
-          >
-            <span>Color & Icon</span>
-            <ChevronDown size={12} className="ml-auto" />
-          </button>
-          {colorPickerOpen && (
-            <div className="px-3 py-2 bg-[var(--surface-2)] border-t border-[var(--border)]">
-              <div className="grid grid-cols-5 gap-2">
-                {colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => {
-                      updateTeamColor(team.id, color);
-                      setMenuOpen(false);
-                      setColorPickerOpen(false);
-                    }}
-                    className="h-6 w-6 rounded border-2 hover:scale-110 transition-transform"
-                    style={{
-                      backgroundColor: color,
-                      borderColor:
-                        team.color === color ? "#000" : "transparent",
-                    }}
-                    title={color}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          <Divider />
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <span>Templates</span>
-          </button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <span>Automations</span>
-          </button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <span>Custom Fields</span>
-          </button>
-          <Divider />
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <Heart size={14} />
-            <span>Add to Favorites</span>
-          </button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <Eye size={14} />
-            <span>Hide Team</span>
-          </button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <span>Duplicate</span>
-          </button>
-          <Divider />
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
-            <span>Sharing and Permissions</span>
-          </button>
-        </div>
+    <Link
+      href={`/teams/${team.id}`}
+      className={cn(
+        "flex items-center gap-2.5 h-8 px-2 rounded text-sm transition-colors",
+        active
+          ? "bg-[var(--selected)] text-[var(--text)]"
+          : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]",
+        collapsed && "md:justify-center md:px-0",
       )}
-    </div>
+      title={team.name}
+    >
+      <LetterAvatar
+        letter={team.initial}
+        size="xs"
+        style={
+          team.color
+            ? { backgroundColor: team.color, borderColor: team.color }
+            : {}
+        }
+      />
+      <span className={cn("flex-1 truncate", collapsed && "md:hidden")}>
+        {team.name}
+      </span>
+      {team.locked && !collapsed && (
+        <Lock size={11} className="text-[var(--text-subtle)] flex-shrink-0" />
+      )}
+    </Link>
   );
 }
 
