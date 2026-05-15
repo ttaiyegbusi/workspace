@@ -13,11 +13,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## What's in here
 
-- **Home, Timesheet, Goals** → tasteful "Coming soon" empty states (placeholder routes).
-- **Inbox** → split-pane email-style list with detail view. Time-grouped (Today / Last 7 days / month names). Corporate-context placeholder messages. Mobile collapses to list-then-detail navigation.
+- **Home, Timesheet, Goals** → tasteful "Coming soon" empty states.
+- **Inbox** → split-pane email-style list with detail view. Time-grouped, corporate-context messages.
 - **Teams** → full member directory with All / Active / Inactive / Pending Invitation tabs.
-- **Team homepage** (e.g. `/teams/engineering`) → task detail view with inline task creation, editable title, metadata (priority / due / tags / docs), description, an Activities feed and an interactive Comments thread. The other tabs (Getting Started, Board, List View) render polished "Coming soon" inline states.
-- **Docs** → file repository list with type-coded file icons.
+- **Team homepage** (e.g. `/teams/engineering`) → task detail view with inline task creation, editable title, metadata (priority / due / tags / docs), description, an Activities feed with a connecting timeline thread, and an interactive Comments thread.
+- **Empty team state** → when a team has no tasks, the Overview tab shows the full task form with placeholder labels ("Enter a Subject", "Type here", "Add"). The right rail shows a single system Activity for the team's creation.
+- **Create team modal** → opens from the `+` icon next to TEAMS in the sidebar. Name, auto-derived initial, private toggle. Creates the team in state and navigates to its empty Overview.
+- **Notifications panel** → opens from the bell icon in the top bar. All / Unread tabs with counts, in-panel search, time-grouped entries (Today / Yesterday / Last 7 days / Older). Five notification types (New Comment, New Reply, Mentioned you, Task Assigned, Status Changed). Click a notification to mark it read and jump to the related task.
+- **Search modal** → opens from the search icon in the top bar. Live-filtering across Contacts, Documents, Links, and Teams. Removable filter chips, per-row dismiss (resets on next query), and an "Open Search Page" stub link.
+- **Docs** → file repository list with type-coded icons.
 - **Account dropdown** → workspace switcher with Switch Account, Create new, Account, Upgrade, Ask a question, Help topics, Share Feedback, Light/Dark mode toggle, Log out.
 
 ## Design decisions

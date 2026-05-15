@@ -28,8 +28,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
-import { workspace, currentUser, teams } from "@/data/workspace";
+import { workspace } from "@/data/workspace";
 import { LetterAvatar } from "@/components/letter-avatar";
+import { CreateTeamModal } from "@/components/create-team-modal";
 
 const nav = [
   { href: "/", label: "Home", icon: Home },
@@ -46,7 +47,8 @@ export function Sidebar() {
   const mobileOpen = useStore((s) => s.mobileSidebarOpen);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
 
-  // Lock body scroll when mobile drawer is open
+  const [createOpen, setCreateOpen] = useState(false);
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.style.overflow = mobileOpen ? "hidden" : "";
@@ -57,7 +59,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile backdrop */}
       <div
         className={cn(
           "fixed inset-0 z-30 bg-black/40 md:hidden transition-opacity",
@@ -69,22 +70,29 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed md:relative z-40 h-full flex flex-col bg-[var(--bg)] border-r border-[var(--border)] transition-all duration-200",
-          // Mobile (drawer)
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-          // Desktop width
           sidebarCollapsed ? "md:w-[60px]" : "md:w-[240px]",
           "w-[260px]",
         )}
       >
-        <SidebarTop collapsed={sidebarCollapsed} />
+        <SidebarTop />
         <SidebarNav collapsed={sidebarCollapsed} pathname={pathname} />
-        <SidebarTeams collapsed={sidebarCollapsed} pathname={pathname} />
+        <SidebarTeams
+          collapsed={sidebarCollapsed}
+          pathname={pathname}
+          onCreateTeam={() => setCreateOpen(true)}
+        />
       </aside>
+
+      <CreateTeamModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </>
   );
 }
 
-function SidebarTop({ collapsed }: { collapsed: boolean }) {
+function SidebarTop() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
 
@@ -152,13 +160,22 @@ function SidebarNav({
 function SidebarTeams({
   collapsed,
   pathname,
+  onCreateTeam,
 }: {
   collapsed: boolean;
   pathname: string;
+  onCreateTeam: () => void;
 }) {
+  const teams = useStore((s) => s.teams);
+
   return (
     <div className="mt-4 flex-1 min-h-0 flex flex-col">
-      <SectionHeader label="TEAMS" collapsed={collapsed} action />
+      <SectionHeader
+        label="TEAMS"
+        collapsed={collapsed}
+        action
+        onAction={onCreateTeam}
+      />
       <nav className="px-2 flex flex-col gap-px overflow-y-auto scroll-thin">
         {teams.map((t) => {
           const active = pathname === `/teams/${t.id}`;
@@ -197,20 +214,25 @@ function SectionHeader({
   label,
   collapsed,
   action = false,
+  onAction,
 }: {
   label: string;
   collapsed: boolean;
   action?: boolean;
+  onAction?: () => void;
 }) {
   if (collapsed)
-    return <div className="h-3 mt-3 mb-1 md:border-t md:border-[var(--border)] md:mx-2" />;
+    return (
+      <div className="h-3 mt-3 mb-1 md:border-t md:border-[var(--border)] md:mx-2" />
+    );
   return (
     <div className="px-4 mt-3 mb-1 flex items-center justify-between text-[10px] tracking-[0.12em] text-[var(--text-subtle)] font-medium">
       <span>{label}</span>
       {action && (
         <button
-          className="h-5 w-5 flex items-center justify-center rounded hover:bg-[var(--hover)]"
-          aria-label="Add team"
+          onClick={onAction}
+          className="h-5 w-5 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)] hover:text-[var(--text)]"
+          aria-label={`Add ${label.toLowerCase()}`}
         >
           <Plus size={12} />
         </button>
@@ -303,7 +325,6 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
           </div>
 
           <Divider />
-
           <MenuItem icon={ArrowLeftRight} label="Switch Account" />
           <MenuItem icon={PlusCircle} label="Create new" />
           <Divider />

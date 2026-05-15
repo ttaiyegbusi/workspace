@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter, notFound } from "next/navigation";
 import {
   User as UserIcon,
@@ -9,16 +9,15 @@ import {
   Tag,
   Paperclip,
   Smile,
-  Send,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Pill } from "@/components/pill";
 import { PriorityPill } from "@/components/priority-pill";
 import { LetterAvatar } from "@/components/letter-avatar";
 import { useStore } from "@/lib/store";
-import { teams, currentUser } from "@/data/workspace";
+import { currentUser } from "@/data/workspace";
 import { docs } from "@/data/docs";
-import { cn, formatDate, initials, timeAgo } from "@/lib/utils";
+import { cn, formatDate, formatTime, timeAgo } from "@/lib/utils";
 
 type Tab = "overview" | "getting-started" | "board" | "list-view";
 
@@ -28,14 +27,21 @@ export default function TeamPage({
   params: Promise<{ teamId: string }>;
 }) {
   const { teamId } = use(params);
+  const teams = useStore((s) => s.teams);
   const team = teams.find((t) => t.id === teamId);
-  if (!team) notFound();
+
+  // Teams could be loaded from localStorage after hydration; render a
+  // minimal fallback while we're certain it's missing.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (mounted && !team) notFound();
 
   const [tab, setTab] = useState<Tab>("overview");
 
   return (
     <>
-      <TopBar title={team.name} />
+      <TopBar title={team?.name ?? ""} />
 
       <div className="border-b border-[var(--border)] px-5 md:px-8 overflow-x-auto scroll-thin">
         <div className="flex gap-5 md:gap-7">
@@ -62,7 +68,7 @@ export default function TeamPage({
         </div>
       </div>
 
-      {tab === "overview" && <Overview teamId={team.id} />}
+      {tab === "overview" && team && <Overview teamId={team.id} />}
       {tab === "getting-started" && <ComingSoonInline label="Getting Started" />}
       {tab === "board" && <ComingSoonInline label="Board" />}
       {tab === "list-view" && <ComingSoonInline label="List View" />}
@@ -103,8 +109,8 @@ function ComingSoonInline({ label }: { label: string }) {
         </div>
         <div className="text-[15px] font-medium mb-1.5">Coming soon</div>
         <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-          We're focusing on making the Overview tab feel exactly right before
-          shipping this one.
+          We&rsquo;re focusing on making the Overview tab feel exactly right
+          before shipping this one.
         </p>
       </div>
     </div>
@@ -117,69 +123,27 @@ function Overview({ teamId }: { teamId: string }) {
   const addTask = useStore((s) => s.addTask);
   const updateTaskTitle = useStore((s) => s.updateTaskTitle);
 
+  // If we have any tasks, pick the selected one or fall back to first.
+  // If we have *no* tasks, render the empty form (matches Product Design screenshot).
   const task = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
-  // New task creation state (the "Type in here" inline field)
-  const [draftTitle, setDraftTitle] = useState("");
-  const router = useRouter();
-
-  function handleDraftKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && draftTitle.trim()) {
-      e.preventDefault();
-      const title = draftTitle.trim();
-      setDraftTitle("");
-      addTask(teamId, title, currentUser.fullName);
-    }
-  }
-
   if (!task) {
-    // Edge case — if no tasks at all
-    return (
-      <div className="flex-1 overflow-y-auto scroll-thin px-5 md:px-10 py-6">
-        <input
-          autoFocus
-          value={draftTitle}
-          onChange={(e) => setDraftTitle(e.target.value)}
-          onKeyDown={handleDraftKey}
-          placeholder="Type in here"
-          className="w-full text-2xl md:text-[28px] tracking-tight font-medium leading-tight bg-transparent border-0 outline-none placeholder:text-[var(--text-subtle)] py-1"
-        />
-        <p className="mt-4 text-sm text-[var(--text-muted)]">
-          Press <Kbd>Enter</Kbd> to create your first task.
-        </p>
-      </div>
-    );
+    return <EmptyTeamForm teamId={teamId} />;
   }
 
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
-      {/* Main */}
       <div className="flex-1 overflow-y-auto scroll-thin">
         <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
-          {/* New-task drafting field, sits above the current task */}
-          <div className="mb-6">
-            <input
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              onKeyDown={handleDraftKey}
-              placeholder="Type in here"
-              className="w-full text-[18px] md:text-[20px] tracking-tight font-medium leading-snug bg-transparent border-0 outline-none placeholder:text-[var(--text-subtle)] py-2 border-b border-transparent focus:border-[var(--border)]"
-            />
-            {draftTitle.length > 0 && (
-              <div className="mt-1.5 text-xs text-[var(--text-subtle)]">
-                Press <Kbd>Enter</Kbd> to create a new task
-              </div>
-            )}
-          </div>
+          {/* Inline new-task drafting field */}
+          <NewTaskDrafter teamId={teamId} />
 
-          {/* Current task title (editable in-place) */}
           <TaskTitle
             key={task.id}
             value={task.title}
             onChange={(v) => updateTaskTitle(task.id, v)}
           />
 
-          {/* Meta grid */}
           <dl className="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-x-4 gap-y-3 mt-6 text-sm">
             <MetaRow icon={UserIcon} label="Created by">
               <span className="text-[13px]">{task.createdBy}</span>
@@ -193,7 +157,9 @@ function Overview({ teamId }: { teamId: string }) {
             <MetaRow icon={Tag} label="Tags">
               <div className="flex flex-wrap gap-1.5">
                 {task.tags.length === 0 && (
-                  <span className="text-[13px] text-[var(--text-subtle)]">—</span>
+                  <span className="text-[13px] text-[var(--text-subtle)]">
+                    —
+                  </span>
                 )}
                 {task.tags.map((t) => (
                   <Pill key={t}>{t}</Pill>
@@ -203,7 +169,9 @@ function Overview({ teamId }: { teamId: string }) {
             <MetaRow icon={Paperclip} label="Docs">
               <div className="flex flex-wrap gap-1.5">
                 {task.attachedDocIds.length === 0 && (
-                  <span className="text-[13px] text-[var(--text-subtle)]">—</span>
+                  <span className="text-[13px] text-[var(--text-subtle)]">
+                    —
+                  </span>
                 )}
                 {task.attachedDocIds.map((id) => {
                   const d = docs.find((x) => x.id === id);
@@ -219,13 +187,11 @@ function Overview({ teamId }: { teamId: string }) {
             </MetaRow>
           </dl>
 
-          {/* Description */}
           <div className="mt-8 text-[14px] leading-relaxed whitespace-pre-wrap text-[var(--text)]">
             {task.description ||
               "Add a description for this task — what should be delivered, why it matters, and who's involved."}
           </div>
 
-          {/* Task switcher (when there are multiple tasks for a team) */}
           {tasks.length > 1 && (
             <div className="mt-10 border-t border-[var(--border)] pt-5">
               <div className="text-[10px] tracking-[0.18em] text-[var(--text-subtle)] mb-3">
@@ -245,8 +211,234 @@ function Overview({ teamId }: { teamId: string }) {
         </div>
       </div>
 
-      {/* Right side panel — Activities + Comments */}
       <RightPanel taskId={task.id} />
+    </div>
+  );
+}
+
+// ---------- Empty team form ----------
+// Mirrors the Product Design screenshot: a non-functional task form with
+// placeholder labels, sitting alongside an Activities rail with a single
+// system entry ("Temitope Aiyegbusi created a Task" — generated when the
+// team was created).
+
+function EmptyTeamForm({ teamId }: { teamId: string }) {
+  const addTask = useStore((s) => s.addTask);
+  const [subject, setSubject] = useState("");
+  // Created-by defaults to current user but stays "Type here"-looking until filled
+  const [createdBy, setCreatedBy] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  function commit() {
+    const title = subject.trim();
+    if (!title) return;
+    addTask(teamId, title, createdBy.trim() || currentUser.fullName);
+    setSubject("");
+    setCreatedBy("");
+    setDueDate("");
+  }
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
+      <div className="flex-1 overflow-y-auto scroll-thin">
+        <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+            }}
+            placeholder="Enter a Subject"
+            className="w-full text-2xl md:text-[28px] tracking-tight font-medium leading-tight bg-transparent border-0 outline-none placeholder:text-[var(--text-subtle)] py-1 -ml-0.5"
+          />
+
+          <dl className="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-x-4 gap-y-3 mt-6 text-sm">
+            <MetaRow icon={UserIcon} label="Created by">
+              <input
+                value={createdBy}
+                onChange={(e) => setCreatedBy(e.target.value)}
+                placeholder="Type here"
+                className="w-full h-7 text-[13px] bg-transparent outline-none placeholder:text-[var(--text-subtle)]"
+              />
+            </MetaRow>
+            <MetaRow icon={Flag} label="Priority">
+              <PlaceholderBtn>Add</PlaceholderBtn>
+            </MetaRow>
+            <MetaRow icon={Calendar} label="Due Date">
+              <input
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                placeholder="Type here"
+                className="w-full h-7 text-[13px] bg-transparent outline-none placeholder:text-[var(--text-subtle)]"
+              />
+            </MetaRow>
+            <MetaRow icon={Tag} label="Tags">
+              <PlaceholderBtn>Add</PlaceholderBtn>
+            </MetaRow>
+            <MetaRow icon={Paperclip} label="Docs">
+              <PlaceholderBtn>Add</PlaceholderBtn>
+            </MetaRow>
+          </dl>
+
+          {subject.trim().length > 0 && (
+            <div className="mt-8 flex items-center gap-2">
+              <button
+                onClick={commit}
+                className="h-8 px-3 text-[13px] rounded font-medium bg-[var(--text)] text-[var(--surface)] hover:opacity-90"
+              >
+                Create task
+              </button>
+              <span className="text-xs text-[var(--text-subtle)]">
+                or press Enter
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right rail with the single system Activity */}
+      <EmptyRightPanel />
+    </div>
+  );
+}
+
+function PlaceholderBtn({ children }: { children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="text-[13px] text-[var(--text-subtle)] hover:text-[var(--text-muted)] px-2 py-0.5 rounded border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors"
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptyRightPanel() {
+  // Use a stable creation time = today, since this is the team's "creation activity"
+  const createdAt = new Date();
+  const timestamp = `${createdAt.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })} at ${formatTime(createdAt.toISOString())}`;
+
+  return (
+    <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
+      <div className="px-5 lg:px-6 pt-5 pb-3">
+        <h3 className="text-[13px] font-medium mb-3">Activities</h3>
+        <ul>
+          <ActivityItem
+            authorName={currentUser.fullName}
+            action="created a Task"
+            timestamp={timestamp}
+            isLast
+          />
+        </ul>
+      </div>
+
+      <div className="border-t border-[var(--border)] flex-1 min-h-0 flex flex-col">
+        <div className="px-5 lg:px-6 pt-4 pb-2">
+          <h3 className="text-[13px] font-medium">Comments</h3>
+        </div>
+        <div className="flex-1 flex items-center justify-center px-5 text-center">
+          <div className="text-xs text-[var(--text-subtle)] leading-relaxed">
+            Comments will appear here once you create a task and the team
+            starts discussing it.
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--border)] p-3 flex items-center gap-2 opacity-50">
+          <input
+            disabled
+            placeholder="Add a comment"
+            className="flex-1 h-9 px-3 text-[13px] bg-[var(--surface-2)] rounded outline-none placeholder:text-[var(--text-subtle)] cursor-not-allowed"
+          />
+          <button
+            disabled
+            className="h-9 w-9 flex items-center justify-center rounded text-[var(--text-muted)]"
+            aria-label="Add emoji"
+          >
+            <Smile size={15} />
+          </button>
+          <button
+            disabled
+            className="h-9 px-4 rounded text-[13px] font-medium bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ---------- Activity item with timeline thread ----------
+
+function ActivityItem({
+  authorName,
+  action,
+  timestamp,
+  isLast = false,
+}: {
+  authorName: string;
+  action: string;
+  timestamp: string;
+  isLast?: boolean;
+}) {
+  return (
+    <li className="relative flex items-start gap-2.5 pb-4 last:pb-0">
+      {!isLast && (
+        <span
+          aria-hidden
+          className="absolute left-[11px] top-7 bottom-1 w-px bg-[var(--border)]"
+        />
+      )}
+      <LetterAvatar
+        letter={authorName.charAt(0).toUpperCase()}
+        size="sm"
+        className="relative z-[1]"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] leading-tight">
+          <span className="font-medium">{authorName}</span>{" "}
+          <span className="text-[var(--text-muted)]">{action}</span>
+        </div>
+        <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">
+          {timestamp}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// ---------- The drafter used when at least one task exists ----------
+
+function NewTaskDrafter({ teamId }: { teamId: string }) {
+  const addTask = useStore((s) => s.addTask);
+  const [draftTitle, setDraftTitle] = useState("");
+
+  function handle(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && draftTitle.trim()) {
+      e.preventDefault();
+      addTask(teamId, draftTitle.trim(), currentUser.fullName);
+      setDraftTitle("");
+    }
+  }
+
+  return (
+    <div className="mb-6">
+      <input
+        value={draftTitle}
+        onChange={(e) => setDraftTitle(e.target.value)}
+        onKeyDown={handle}
+        placeholder="Type in here"
+        className="w-full text-[18px] md:text-[20px] tracking-tight font-medium leading-snug bg-transparent border-0 outline-none placeholder:text-[var(--text-subtle)] py-2 border-b border-transparent focus:border-[var(--border)]"
+      />
+      {draftTitle.length > 0 && (
+        <div className="mt-1.5 text-xs text-[var(--text-subtle)]">
+          Press <Kbd>Enter</Kbd> to create a new task
+        </div>
+      )}
     </div>
   );
 }
@@ -343,33 +535,25 @@ function RightPanel({ taskId }: { taskId: string }) {
     inputRef.current?.focus();
   }
 
+  const recentActivities = task.activities.slice(-5);
+
   return (
     <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
-      {/* Activities */}
       <div className="px-5 lg:px-6 pt-5 pb-3">
         <h3 className="text-[13px] font-medium mb-3">Activities</h3>
-        <ul className="space-y-3">
-          {task.activities.slice(-5).map((a) => (
-            <li key={a.id} className="flex items-start gap-2.5">
-              <LetterAvatar
-                letter={a.authorName.charAt(0).toUpperCase()}
-                size="sm"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-[13px] leading-tight">
-                  <span className="font-medium">{a.authorName}</span>{" "}
-                  <span className="text-[var(--text-muted)]">{a.action}</span>
-                </div>
-                <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">
-                  {timeAgo(a.createdAt)}
-                </div>
-              </div>
-            </li>
+        <ul>
+          {recentActivities.map((a, i) => (
+            <ActivityItem
+              key={a.id}
+              authorName={a.authorName}
+              action={a.action}
+              timestamp={timeAgo(a.createdAt)}
+              isLast={i === recentActivities.length - 1}
+            />
           ))}
         </ul>
       </div>
 
-      {/* Comments */}
       <div className="border-t border-[var(--border)] flex-1 min-h-0 flex flex-col">
         <div className="px-5 lg:px-6 pt-4 pb-2">
           <h3 className="text-[13px] font-medium">Comments</h3>
@@ -402,7 +586,6 @@ function RightPanel({ taskId }: { taskId: string }) {
           ))}
         </ul>
 
-        {/* Composer */}
         <div className="border-t border-[var(--border)] p-3 flex items-center gap-2">
           <input
             ref={inputRef}
@@ -427,14 +610,13 @@ function RightPanel({ taskId }: { taskId: string }) {
             onClick={send}
             disabled={!draft.trim()}
             className={cn(
-              "h-9 px-3 rounded text-[13px] flex items-center gap-1.5 font-medium transition-colors",
+              "h-9 px-4 rounded text-[13px] font-medium transition-colors",
               draft.trim()
                 ? "bg-[var(--text)] text-[var(--surface)] hover:opacity-90"
                 : "bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed",
             )}
           >
-            <span>Send</span>
-            <Send size={12} />
+            Send
           </button>
         </div>
       </div>

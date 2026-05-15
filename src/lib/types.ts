@@ -73,3 +73,36 @@ export type Task = {
   comments: Comment[];
   activities: Activity[];
 };
+
+export type Contact = {
+  id: string;
+  name: string;
+  email: string;
+  company: string;
+  initial?: string;
+};
+
+export type SearchLink = {
+  id: string;
+  url: string;
+  // where it came from (purely informational — not shown)
+  source: "task" | "comment" | "inbox";
+};
+
+export type NotificationType =
+  | "New Comment"
+  | "New Reply"
+  | "Mentioned you"
+  | "Task Assigned"
+  | "Status Changed";
+
+export type Notification = {
+  id: string;
+  type: NotificationType;
+  authorName: string;
+  context: string; // e.g. "Engineering Team"
+  taskId?: string; // for navigation
+  preview: string;
+  createdAt: string; // ISO
+  read: boolean;
+};
