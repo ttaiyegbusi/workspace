@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, Paperclip, ExternalLink, FileText } from "lucide-react";
-import { Modal } from "@/components/modal";
+import { Search, X, Paperclip, ExternalLink } from "lucide-react";
 import { LetterAvatar } from "@/components/letter-avatar";
 import { DocIcon } from "@/components/doc-icon";
 import { useStore } from "@/lib/store";
@@ -27,16 +26,16 @@ type Props = {
   onClose: () => void;
 };
 
-export function SearchModal({ open, onClose }: Props) {
+export function SearchPopover({ open, onClose }: Props) {
   const router = useRouter();
   const teams = useStore((s) => s.teams);
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<Set<Filter>>(
     new Set(ALL_FILTERS),
   );
-  // Per-result dismissals — Option A: clears on next search (reset when query changes)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -47,10 +46,32 @@ export function SearchModal({ open, onClose }: Props) {
     }
   }, [open]);
 
-  // Reset dismissals when query changes
   useEffect(() => {
     setDismissed(new Set());
   }, [query]);
+
+  // Outside click / Escape
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest("[data-search-trigger]")
+      ) {
+        onClose();
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
 
   function dismiss(key: string) {
     setDismissed((s) => new Set(s).add(key));
@@ -73,13 +94,11 @@ export function SearchModal({ open, onClose }: Props) {
     });
   }
 
-  // Filtering logic — case-insensitive substring across all fields
   const q = query.trim().toLowerCase();
   const hasQuery = q.length > 0;
 
   const contactResults = useMemo(() => {
-    if (!activeFilters.has("contact")) return [];
-    if (!hasQuery) return [];
+    if (!activeFilters.has("contact") || !hasQuery) return [];
     return contacts.filter(
       (c) =>
         !dismissed.has(`contact:${c.id}`) &&
@@ -90,8 +109,7 @@ export function SearchModal({ open, onClose }: Props) {
   }, [activeFilters, q, hasQuery, dismissed]);
 
   const docResults = useMemo(() => {
-    if (!activeFilters.has("documents")) return [];
-    if (!hasQuery) return [];
+    if (!activeFilters.has("documents") || !hasQuery) return [];
     return docs.filter(
       (d) =>
         !dismissed.has(`doc:${d.id}`) && d.name.toLowerCase().includes(q),
@@ -99,8 +117,7 @@ export function SearchModal({ open, onClose }: Props) {
   }, [activeFilters, q, hasQuery, dismissed]);
 
   const linkResults = useMemo(() => {
-    if (!activeFilters.has("links")) return [];
-    if (!hasQuery) return [];
+    if (!activeFilters.has("links") || !hasQuery) return [];
     return links.filter(
       (l) =>
         !dismissed.has(`link:${l.id}`) && l.url.toLowerCase().includes(q),
@@ -108,8 +125,7 @@ export function SearchModal({ open, onClose }: Props) {
   }, [activeFilters, q, hasQuery, dismissed]);
 
   const teamResults = useMemo(() => {
-    if (!activeFilters.has("teams")) return [];
-    if (!hasQuery) return [];
+    if (!activeFilters.has("teams") || !hasQuery) return [];
     return teams.filter(
       (t) =>
         !dismissed.has(`team:${t.id}`) && t.name.toLowerCase().includes(q),
@@ -127,8 +143,13 @@ export function SearchModal({ open, onClose }: Props) {
     router.push(href);
   }
 
+  if (!open) return null;
+
   return (
-    <Modal open={open} onClose={onClose} align="top" className="max-w-xl">
+    <div
+      ref={panelRef}
+      className="absolute top-12 right-3 md:right-4 z-50 w-[420px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-5rem)] bg-[var(--surface)] border border-[var(--border)] rounded-md shadow-[var(--shadow-lg)] flex flex-col overflow-hidden"
+    >
       {/* Search input */}
       <div className="px-4 py-3 flex items-center gap-2 border-b border-[var(--border)]">
         <Search size={14} className="text-[var(--text-subtle)] flex-shrink-0" />
@@ -137,7 +158,7 @@ export function SearchModal({ open, onClose }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search anything — contacts, docs, links, teams…"
-          className="flex-1 h-7 bg-transparent outline-none text-[14px] placeholder:text-[var(--text-subtle)]"
+          className="flex-1 h-7 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-[14px] placeholder:text-[var(--text-subtle)]"
         />
         <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border-strong)] text-[var(--text-subtle)]">
           ESC
@@ -272,7 +293,7 @@ export function SearchModal({ open, onClose }: Props) {
           <span>Open Search Page</span>
         </button>
       </div>
-    </Modal>
+    </div>
   );
 }
 

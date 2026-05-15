@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useTheme } from "next-themes";
 import {
   Home,
   Inbox as InboxIcon,
@@ -23,8 +22,6 @@ import {
   BookOpen,
   Lightbulb,
   LogOut,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
@@ -244,10 +241,6 @@ function SectionHeader({
 function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -257,16 +250,6 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
-
-  function toggleTheme() {
-    if (!mounted) return;
-    document.documentElement.classList.add("transitioning");
-    setTheme(theme === "dark" ? "light" : "dark");
-    setTimeout(
-      () => document.documentElement.classList.remove("transitioning"),
-      250,
-    );
-  }
 
   return (
     <div className="relative" ref={ref}>
@@ -334,20 +317,6 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
           <MenuItem icon={HelpCircle} label="Ask a question" />
           <MenuItem icon={BookOpen} label="Help topics" />
           <MenuItem icon={Lightbulb} label="Share Feedback" />
-          <Divider />
-          <button
-            onClick={toggleTheme}
-            className="w-full px-3 h-9 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"
-          >
-            {mounted && theme === "dark" ? (
-              <Sun size={14} className="text-[var(--text-muted)]" />
-            ) : (
-              <Moon size={14} className="text-[var(--text-muted)]" />
-            )}
-            <span>
-              {mounted && theme === "dark" ? "Light mode" : "Dark mode"}
-            </span>
-          </button>
           <Divider />
           <MenuItem icon={LogOut} label="Log out" />
         </div>

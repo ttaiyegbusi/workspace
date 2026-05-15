@@ -10,8 +10,9 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { currentUser } from "@/data/workspace";
-import { SearchModal } from "@/components/search-modal";
+import { SearchPopover } from "@/components/search-popover";
 import { NotificationsPanel } from "@/components/notifications-panel";
+import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -27,6 +28,24 @@ export function TopBar({ title, children }: Props) {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Mutual exclusivity — only one popover open at a time
+  function openSearch() {
+    setNotifOpen(false);
+    setUserMenuOpen(false);
+    setSearchOpen(true);
+  }
+  function openNotifs() {
+    setSearchOpen(false);
+    setUserMenuOpen(false);
+    setNotifOpen((v) => !v);
+  }
+  function openUserMenu() {
+    setSearchOpen(false);
+    setNotifOpen(false);
+    setUserMenuOpen((v) => !v);
+  }
 
   return (
     <header className="relative h-14 border-b border-[var(--border)] flex items-center px-4 md:px-6 gap-3 flex-shrink-0">
@@ -52,7 +71,8 @@ export function TopBar({ title, children }: Props) {
         {children}
 
         <button
-          onClick={() => setSearchOpen(true)}
+          data-search-trigger
+          onClick={() => (searchOpen ? setSearchOpen(false) : openSearch())}
           className="h-8 w-8 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)]"
           aria-label="Search"
         >
@@ -61,7 +81,7 @@ export function TopBar({ title, children }: Props) {
 
         <button
           data-notifications-trigger
-          onClick={() => setNotifOpen((v) => !v)}
+          onClick={openNotifs}
           className="relative h-8 w-8 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)]"
           aria-label="Notifications"
         >
@@ -76,14 +96,25 @@ export function TopBar({ title, children }: Props) {
           )}
         </button>
 
-        <button className="h-8 pl-2 pr-1.5 flex items-center gap-1.5 rounded hover:bg-[var(--hover)] text-sm">
+        <button
+          data-user-menu-trigger
+          onClick={openUserMenu}
+          className="h-8 pl-2 pr-1.5 flex items-center gap-1.5 rounded hover:bg-[var(--hover)] text-sm"
+        >
           <span>{currentUser.name}</span>
-          <ChevronDown size={12} className="text-[var(--text-subtle)]" />
+          <ChevronDown
+            size={12}
+            className={cn(
+              "text-[var(--text-subtle)] transition-transform",
+              userMenuOpen && "rotate-180",
+            )}
+          />
         </button>
       </div>
 
       <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SearchPopover open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} />
     </header>
   );
 }

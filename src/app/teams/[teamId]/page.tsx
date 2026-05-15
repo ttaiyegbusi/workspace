@@ -41,7 +41,7 @@ export default function TeamPage({
 
   // Share state lives at the page level since the Share button is in the tab bar
   const [shareOpen, setShareOpen] = useState(false);
-  const [successEmail, setSuccessEmail] = useState<string | null>(null);
+  const [successLabel, setSuccessLabel] = useState<string | null>(null);
 
   // Pull stable references from the store, then derive in render.
   // (Filtering inside a Zustand selector returns a new array each call,
@@ -128,7 +128,7 @@ export default function TeamPage({
             open={shareOpen}
             onClose={() => setShareOpen(false)}
             taskId={activeTask.id}
-            onSent={(email) => setSuccessEmail(email)}
+            onSent={(label) => setSuccessLabel(label)}
           />
         )}
       </div>
@@ -139,9 +139,9 @@ export default function TeamPage({
       {tab === "list-view" && <ComingSoonInline label="List View" />}
 
       <ShareSuccessModal
-        open={successEmail !== null}
-        email={successEmail ?? ""}
-        onClose={() => setSuccessEmail(null)}
+        open={successLabel !== null}
+        label={successLabel ?? ""}
+        onClose={() => setSuccessLabel(null)}
       />
     </>
   );
@@ -205,8 +205,6 @@ function Overview({ teamId }: { teamId: string }) {
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
       <div className="flex-1 overflow-y-auto scroll-thin">
         <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
-          <NewTaskDrafter teamId={teamId} />
-
           <TaskTitle
             key={task.id}
             value={task.title}
@@ -527,44 +525,6 @@ function ActivityItem({
   );
 }
 
-function NewTaskDrafter({ teamId }: { teamId: string }) {
-  const addTask = useStore((s) => s.addTask);
-  const [draftTitle, setDraftTitle] = useState("");
-
-  function handle(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && draftTitle.trim()) {
-      e.preventDefault();
-      addTask(teamId, draftTitle.trim(), currentUser.fullName);
-      setDraftTitle("");
-    }
-  }
-
-  return (
-    <div className="mb-6">
-      <input
-        value={draftTitle}
-        onChange={(e) => setDraftTitle(e.target.value)}
-        onKeyDown={handle}
-        placeholder="Type in here"
-        className="w-full text-[18px] md:text-[20px] tracking-tight font-medium leading-snug bg-transparent border-0 outline-none placeholder:text-[var(--text-subtle)] py-2 border-b border-transparent focus:border-[var(--border)]"
-      />
-      {draftTitle.length > 0 && (
-        <div className="mt-1.5 text-xs text-[var(--text-subtle)]">
-          Press <Kbd>Enter</Kbd> to create a new task
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="px-1.5 py-0.5 text-[10px] rounded border border-[var(--border-strong)] bg-[var(--surface-2)] text-[var(--text-muted)]">
-      {children}
-    </kbd>
-  );
-}
-
 function TaskTitle({
   value,
   onChange,
@@ -679,10 +639,14 @@ function RightPanel({ taskId }: { taskId: string }) {
             </li>
           )}
           {task.comments.map((c) => (
-            <li key={c.id} className="flex items-start gap-2.5">
+            <li
+              key={c.id}
+              className="relative flex items-start gap-2.5"
+            >
               <LetterAvatar
                 letter={c.authorName.charAt(0).toUpperCase()}
                 size="sm"
+                className="relative z-[1]"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 text-[12px]">

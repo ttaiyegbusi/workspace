@@ -6,10 +6,14 @@ import { Modal } from "@/components/modal";
 type Props = {
   open: boolean;
   onClose: () => void;
-  email: string;
+  /** Either a single email or a summary label like "3 people" */
+  label: string;
 };
 
-export function ShareSuccessModal({ open, onClose, email }: Props) {
+export function ShareSuccessModal({ open, onClose, label }: Props) {
+  // If the label contains an @, treat it as a single email recipient.
+  const isSingleEmail = label.includes("@");
+
   return (
     <Modal open={open} onClose={onClose} align="center" className="max-w-sm">
       <div className="px-6 pt-7 pb-6 text-center">
@@ -18,7 +22,17 @@ export function ShareSuccessModal({ open, onClose, email }: Props) {
         </div>
         <h2 className="text-[15px] font-medium mb-1.5">Shared successfully</h2>
         <p className="text-[13px] text-[var(--text-muted)] leading-relaxed">
-          {email} now has access to this task. They&rsquo;ll get an email shortly.
+          {isSingleEmail ? (
+            <>
+              <span className="text-[var(--text)]">{label}</span> now has
+              access to this task. They&rsquo;ll get an email shortly.
+            </>
+          ) : (
+            <>
+              <span className="text-[var(--text)]">{label}</span> now have
+              access to this task. They&rsquo;ll get an email shortly.
+            </>
+          )}
         </p>
       </div>
       <div className="px-5 py-3 border-t border-[var(--border)] bg-[var(--bg)] flex justify-end">
@@ -33,3 +47,4 @@ export function ShareSuccessModal({ open, onClose, email }: Props) {
     </Modal>
   );
 }
+
