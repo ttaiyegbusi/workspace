@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import { notFound } from "next/navigation";
 import {
   User as UserIcon,
   Flag,
@@ -12,6 +11,7 @@ import {
   ExternalLink,
   Users as UsersIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
 import { Pill } from "@/components/pill";
 import { PriorityPill } from "@/components/priority-pill";
@@ -37,22 +37,51 @@ export default function TeamPage({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  if (mounted && !team) notFound();
-
   const [tab, setTab] = useState<Tab>("overview");
 
   // Share state lives at the page level since the Share button is in the tab bar
   const [shareOpen, setShareOpen] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
 
-  // Pull the active task id for the current team to know what to share
-  const selectedTaskId = useStore((s) =>
-    team ? s.selectedTaskByTeam[team.id] : null,
-  );
-  const tasks = useStore((s) =>
-    team ? s.tasks.filter((t) => t.teamId === team.id) : [],
-  );
+  // Pull stable references from the store, then derive in render.
+  // (Filtering inside a Zustand selector returns a new array each call,
+  // which triggers infinite re-renders.)
+  const allTasks = useStore((s) => s.tasks);
+  const selectedTaskByTeam = useStore((s) => s.selectedTaskByTeam);
+
+  const tasks = team
+    ? allTasks.filter((t) => t.teamId === team.id)
+    : [];
+  const selectedTaskId = team ? selectedTaskByTeam[team.id] ?? null : null;
   const activeTask = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
+
+  // Graceful render when the team genuinely doesn't exist (e.g. typo'd URL).
+  // We avoid calling notFound() from a client component since that throws
+  // during render and gets obscured in production builds.
+  if (mounted && !team) {
+    return (
+      <>
+        <TopBar title="Team not found" />
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="text-center max-w-sm">
+            <h2 className="text-[15px] font-medium mb-1.5">
+              We couldn&rsquo;t find that team
+            </h2>
+            <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-4">
+              The team you&rsquo;re looking for may have been removed, or the
+              URL might be wrong.
+            </p>
+            <Link
+              href="/teams"
+              className="inline-flex h-8 items-center px-3 rounded text-[13px] font-medium bg-[var(--text)] text-[var(--surface)] hover:opacity-90"
+            >
+              Back to teams
+            </Link>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -160,10 +189,12 @@ function ComingSoonInline({ label }: { label: string }) {
 }
 
 function Overview({ teamId }: { teamId: string }) {
-  const tasks = useStore((s) => s.tasks.filter((t) => t.teamId === teamId));
-  const selectedTaskId = useStore((s) => s.selectedTaskByTeam[teamId]);
+  const allTasks = useStore((s) => s.tasks);
+  const selectedTaskByTeam = useStore((s) => s.selectedTaskByTeam);
   const updateTaskTitle = useStore((s) => s.updateTaskTitle);
 
+  const tasks = allTasks.filter((t) => t.teamId === teamId);
+  const selectedTaskId = selectedTaskByTeam[teamId] ?? null;
   const task = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
   if (!task) {

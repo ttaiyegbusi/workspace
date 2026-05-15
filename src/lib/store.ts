@@ -292,6 +292,28 @@ export const useStore = create<AppState>()(
         selectedTaskByTeam: s.selectedTaskByTeam,
         sidebarCollapsed: s.sidebarCollapsed,
       }),
+      // Defensive merge: persisted tasks from older schema versions may lack
+      // peopleAccess / teamAccess / comments / activities. Backfill them as
+      // empty arrays so consumers never hit `undefined.length`.
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<AppState>;
+        const tasks = (persisted.tasks ?? currentState.tasks).map((t) => ({
+          ...t,
+          peopleAccess: Array.isArray(t.peopleAccess) ? t.peopleAccess : [],
+          teamAccess: Array.isArray(t.teamAccess) ? t.teamAccess : [],
+          comments: Array.isArray(t.comments) ? t.comments : [],
+          activities: Array.isArray(t.activities) ? t.activities : [],
+          tags: Array.isArray(t.tags) ? t.tags : [],
+          attachedDocIds: Array.isArray(t.attachedDocIds)
+            ? t.attachedDocIds
+            : [],
+        }));
+        return {
+          ...currentState,
+          ...persisted,
+          tasks,
+        };
+      },
     },
   ),
 );
