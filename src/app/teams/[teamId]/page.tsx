@@ -10,6 +10,10 @@ import {
   Smile,
   ExternalLink,
   Users as UsersIcon,
+  MoreHorizontal,
+  Copy,
+  Heart,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
@@ -22,6 +26,7 @@ import { useStore } from "@/lib/store";
 import { currentUser } from "@/data/workspace";
 import { docs } from "@/data/docs";
 import { cn, formatDate, formatTime, timeAgo } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 type Tab = "overview" | "getting-started" | "board" | "list-view";
 
@@ -49,10 +54,8 @@ export default function TeamPage({
   const allTasks = useStore((s) => s.tasks);
   const selectedTaskByTeam = useStore((s) => s.selectedTaskByTeam);
 
-  const tasks = team
-    ? allTasks.filter((t) => t.teamId === team.id)
-    : [];
-  const selectedTaskId = team ? selectedTaskByTeam[team.id] ?? null : null;
+  const tasks = team ? allTasks.filter((t) => t.teamId === team.id) : [];
+  const selectedTaskId = team ? (selectedTaskByTeam[team.id] ?? null) : null;
   const activeTask = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
   // Graceful render when the team genuinely doesn't exist (e.g. typo'd URL).
@@ -86,6 +89,14 @@ export default function TeamPage({
   return (
     <>
       <TopBar title={team?.name ?? ""} />
+
+      {/* Team Header with Menu */}
+      {team && (
+        <div className="px-5 md:px-8 py-4 border-b border-[var(--border)] flex items-center justify-between">
+          <h1 className="text-2xl font-medium">{team.name}</h1>
+          <TeamMenuButton teamId={team.id} teamName={team.name} />
+        </div>
+      )}
 
       <div className="relative border-b border-[var(--border)] px-5 md:px-8 flex items-center">
         <div className="flex gap-5 md:gap-7 overflow-x-auto scroll-thin flex-1">
@@ -134,7 +145,9 @@ export default function TeamPage({
       </div>
 
       {tab === "overview" && team && <Overview teamId={team.id} />}
-      {tab === "getting-started" && <ComingSoonInline label="Getting Started" />}
+      {tab === "getting-started" && (
+        <ComingSoonInline label="Getting Started" />
+      )}
       {tab === "board" && <ComingSoonInline label="Board" />}
       {tab === "list-view" && <ComingSoonInline label="List View" />}
 
@@ -458,8 +471,8 @@ function EmptyRightPanel() {
         </div>
         <div className="flex-1 flex items-center justify-center px-5 text-center">
           <div className="text-xs text-[var(--text-subtle)] leading-relaxed">
-            Comments will appear here once you create a task and the team
-            starts discussing it.
+            Comments will appear here once you create a task and the team starts
+            discussing it.
           </div>
         </div>
 
@@ -639,10 +652,7 @@ function RightPanel({ taskId }: { taskId: string }) {
             </li>
           )}
           {task.comments.map((c) => (
-            <li
-              key={c.id}
-              className="relative flex items-start gap-2.5"
-            >
+            <li key={c.id} className="relative flex items-start gap-2.5 pb-4">
               <LetterAvatar
                 letter={c.authorName.charAt(0).toUpperCase()}
                 size="sm"
@@ -699,5 +709,66 @@ function RightPanel({ taskId }: { taskId: string }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+function TeamMenuButton({
+  teamId,
+  teamName,
+}: {
+  teamId: string;
+  teamName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const updateTeamColor = useStore((s) => s.updateTeamColor);
+  const team = useStore((s) => s.teams.find((t) => t.id === teamId))!;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setColorPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const colors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#0ea5e9", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b"];
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button onClick={() => setOpen(!open)} className="h-8 w-8 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)] transition-colors" title="Team options">
+        <MoreHorizontal size={18} />
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 w-[200px] z-50 rounded-md bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)] py-1">
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Rename</span></button>
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><Copy size={14} /><span>Copy Link</span></button>
+          <button onClick={() => setColorPickerOpen(!colorPickerOpen)} className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left relative"><span>Color & Icon</span><ChevronDown size={12} className="ml-auto" /></button>
+          {colorPickerOpen && (
+            <div className="px-3 py-2 bg-[var(--surface-2)] border-t border-[var(--border)]">
+              <div className="grid grid-cols-5 gap-2">
+                {colors.map((color) => (
+                  <button key={color} onClick={() => { updateTeamColor(teamId, color); setOpen(false); setColorPickerOpen(false); }} className="h-6 w-6 rounded border-2 hover:scale-110 transition-transform" style={{ backgroundColor: color, borderColor: team.color === color ? "#000" : "transparent" }} title={color} />
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="h-px bg-[var(--border)] mx-2 my-1" />
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Templates</span></button>
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Automations</span></button>
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Custom Fields</span></button>
+          <div className="h-px bg-[var(--border)] mx-2 my-1" />
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><Heart size={14} /><span>Add to Favorites</span></button>
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><Eye size={14} /><span>Hide Team</span></button>
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Duplicate</span></button>
+          <div className="h-px bg-[var(--border)] mx-2 my-1" />
+          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Sharing and Permissions</span></button>
+        </div>
+      )}
+    </div>
   );
 }

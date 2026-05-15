@@ -107,11 +107,6 @@ function SidebarTop() {
       >
         <PanelLeft size={16} />
       </button>
-
-      {/* Warehouse Logo */}
-      <div className="h-6 w-6 bg-black rounded-sm flex items-center justify-center flex-shrink-0">
-        <span className="text-white font-bold text-xs">W</span>
-      </div>
     </div>
   );
 }
