@@ -639,8 +639,8 @@ function RightPanel({ taskId }: { taskId: string }) {
   const recentActivities = task.activities.slice(-5);
 
   // Padding constants applied identically to every row in both Activities and Comments.
-  const ROW_PX = "px-4";
-  const SECTION_HEADER_PX = "px-4";
+  const ROW_PX = "px-3";
+  const SECTION_HEADER_PX = "px-3";
 
   return (
     <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
@@ -719,7 +719,7 @@ function RightPanel({ taskId }: { taskId: string }) {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-[var(--border)] px-4 py-3 flex items-center gap-2">
+      <div className="border-t border-[var(--border)] px-3 py-3 flex items-center gap-2">
         <input
           ref={inputRef}
           value={draft}
@@ -775,7 +775,7 @@ function ListRow({
   return (
     <li
       className={cn(
-        "relative flex items-start gap-2.5",
+        "relative flex items-start gap-2",
         paddingX,
         bodyPaddingBottom,
       )}
