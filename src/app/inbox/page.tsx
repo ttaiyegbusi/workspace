@@ -155,10 +155,11 @@ function InboxDetail({
   item: InboxItem;
   onClose: () => void;
 }) {
-  // Pull user-added replies for this item from the store
-  const repliesForThisItem = useStore(
-    (s) => s.inboxRepliesByItemId[item.id] ?? [],
-  );
+  // Pull the stable map reference, then index into it during render.
+  // (Returning `... ?? []` directly from the selector creates a new array
+  // every call and causes an infinite re-render loop.)
+  const repliesMap = useStore((s) => s.inboxRepliesByItemId);
+  const repliesForThisItem = repliesMap[item.id] ?? [];
   const addInboxReply = useStore((s) => s.addInboxReply);
   const removeInboxReply = useStore((s) => s.removeInboxReply);
   const showToast = useToastStore((s) => s.show);
