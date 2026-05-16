@@ -112,64 +112,66 @@ export default function TeamPage({
         />
       )}
 
-      <div className="relative border-b border-[var(--border)] px-5 md:px-8 flex items-center">
-        <div className="flex gap-5 md:gap-7 overflow-x-auto scroll-thin flex-1">
-          <TabBtn
-            label="Overview"
-            active={tab === "overview"}
-            onClick={() => setTab("overview")}
-          />
-          <TabBtn
-            label="Getting Started"
-            active={tab === "getting-started"}
-            onClick={() => setTab("getting-started")}
-          />
-          <TabBtn
-            label="Board"
-            active={tab === "board"}
-            onClick={() => setTab("board")}
-          />
-          <TabBtn
-            label="List View"
-            active={tab === "list-view"}
-            onClick={() => setTab("list-view")}
-          />
+      <div className="mx-auto w-full max-w-[1600px]">
+        <div className="relative border-b border-[var(--border)] px-5 md:px-6 flex items-center">
+          <div className="flex gap-5 md:gap-7 overflow-x-auto scroll-thin flex-1">
+            <TabBtn
+              label="Overview"
+              active={tab === "overview"}
+              onClick={() => setTab("overview")}
+            />
+            <TabBtn
+              label="Getting Started"
+              active={tab === "getting-started"}
+              onClick={() => setTab("getting-started")}
+            />
+            <TabBtn
+              label="Board"
+              active={tab === "board"}
+              onClick={() => setTab("board")}
+            />
+            <TabBtn
+              label="List View"
+              active={tab === "list-view"}
+              onClick={() => setTab("list-view")}
+            />
+          </div>
+
+          {/* Share button — only shown when there's an active task to share */}
+          {tab === "overview" && activeTask && (
+            <button
+              data-share-trigger
+              onClick={() => setShareOpen((v) => !v)}
+              className="ml-3 flex items-center gap-1.5 h-8 px-2.5 rounded text-[13px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0"
+            >
+              <span>Share</span>
+              <ExternalLink size={11} strokeWidth={1.6} />
+            </button>
+          )}
+
+          {activeTask && (
+            <SharePopover
+              open={shareOpen}
+              onClose={() => setShareOpen(false)}
+              taskId={activeTask.id}
+              onSent={(label) => setSuccessLabel(label)}
+            />
+          )}
         </div>
 
-        {/* Share button — only shown when there's an active task to share */}
-        {tab === "overview" && activeTask && (
-          <button
-            data-share-trigger
-            onClick={() => setShareOpen((v) => !v)}
-            className="ml-3 flex items-center gap-1.5 h-8 px-2.5 rounded text-[13px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0"
-          >
-            <span>Share</span>
-            <ExternalLink size={11} strokeWidth={1.6} />
-          </button>
+        {tab === "overview" && team && <Overview teamId={team.id} />}
+        {tab === "getting-started" && (
+          <ComingSoonInline label="Getting Started" />
         )}
+        {tab === "board" && <ComingSoonInline label="Board" />}
+        {tab === "list-view" && <ComingSoonInline label="List View" />}
 
-        {activeTask && (
-          <SharePopover
-            open={shareOpen}
-            onClose={() => setShareOpen(false)}
-            taskId={activeTask.id}
-            onSent={(label) => setSuccessLabel(label)}
-          />
-        )}
+        <ShareSuccessModal
+          open={successLabel !== null}
+          label={successLabel ?? ""}
+          onClose={() => setSuccessLabel(null)}
+        />
       </div>
-
-      {tab === "overview" && team && <Overview teamId={team.id} />}
-      {tab === "getting-started" && (
-        <ComingSoonInline label="Getting Started" />
-      )}
-      {tab === "board" && <ComingSoonInline label="Board" />}
-      {tab === "list-view" && <ComingSoonInline label="List View" />}
-
-      <ShareSuccessModal
-        open={successLabel !== null}
-        label={successLabel ?? ""}
-        onClose={() => setSuccessLabel(null)}
-      />
     </>
   );
 }
@@ -231,7 +233,7 @@ function Overview({ teamId }: { teamId: string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
       <div className="flex-1 overflow-y-auto scroll-thin">
-        <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
+        <div className="px-5 md:px-6 py-6 md:py-8 max-w-3xl">
           <TaskTitle
             key={task.id}
             value={task.title}
@@ -386,7 +388,7 @@ function EmptyTeamForm({ teamId }: { teamId: string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
       <div className="flex-1 overflow-y-auto scroll-thin">
-        <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
+        <div className="px-5 md:px-6 py-6 md:py-8 max-w-3xl">
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -467,7 +469,7 @@ function EmptyRightPanel() {
 
   return (
     <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
-      <div className="px-5 lg:px-6 pt-5 pb-3">
+      <div className="px-5 pt-5 pb-3">
         <h3 className="text-[13px] font-medium mb-3">Activities</h3>
         <ul>
           <ActivityItem
@@ -480,7 +482,7 @@ function EmptyRightPanel() {
       </div>
 
       <div className="border-t border-[var(--border)] flex-1 min-h-0 flex flex-col">
-        <div className="px-5 lg:px-6 pt-4 pb-2">
+        <div className="px-5 pt-4 pb-2">
           <h3 className="text-[13px] font-medium">Comments</h3>
         </div>
         <div className="flex-1 flex items-center justify-center px-5 text-center">
