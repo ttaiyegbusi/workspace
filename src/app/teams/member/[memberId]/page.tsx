@@ -5,13 +5,8 @@ import { LetterAvatar } from "@/components/letter-avatar";
 import { members } from "@/data/members";
 import { initials } from "@/lib/utils";
 
-type Props = {
-  params: {
-    memberId: string;
-  };
-};
-
-export default function MemberDetailPage({ params }: Props) {
+export default function MemberDetailPage(props: any) {
+  const { params } = props;
   const member = members.find((item) => item.id === params.memberId);
 
   if (!member) {
