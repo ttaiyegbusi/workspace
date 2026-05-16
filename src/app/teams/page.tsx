@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Pill } from "@/components/pill";
@@ -64,23 +65,25 @@ export default function TeamsPage() {
 
         <ul className="flex-1 overflow-y-auto scroll-thin">
           {filtered.map((m) => (
-            <li
-              key={m.id}
-              className="px-5 md:px-8 py-3.5 flex items-center gap-3 md:gap-4 border-b border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
-            >
-              <LetterAvatar letter={initials(m.name).charAt(0)} size="md" />
-              <span className="text-[13px] flex-1 min-w-0 truncate font-medium">
-                {m.name}
-              </span>
-              <span className="hidden md:block text-[13px] text-[var(--text-muted)] w-[260px] truncate">
-                {m.email}
-              </span>
-              <Pill className="w-[80px] justify-center">
-                <span className="capitalize">{m.status}</span>
-              </Pill>
-              <span className="hidden lg:block text-[13px] text-[var(--text-muted)] w-[200px] truncate text-right">
-                {m.role}
-              </span>
+            <li key={m.id}>
+              <Link
+                href={`/teams/member/${m.id}`}
+                className="group block px-5 md:px-8 py-3.5 flex items-center gap-3 md:gap-4 border-b border-[var(--border)] hover:bg-[var(--hover)] transition-colors"
+              >
+                <LetterAvatar letter={initials(m.name).charAt(0)} size="md" />
+                <span className="text-[13px] flex-1 min-w-0 truncate font-medium">
+                  {m.name}
+                </span>
+                <span className="hidden md:block text-[13px] text-[var(--text-muted)] w-[260px] truncate">
+                  {m.email}
+                </span>
+                <Pill className="w-[80px] justify-center">
+                  <span className="capitalize">{m.status}</span>
+                </Pill>
+                <span className="hidden lg:block text-[13px] text-[var(--text-muted)] w-[200px] truncate text-right">
+                  {m.role}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
