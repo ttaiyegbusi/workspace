@@ -16,17 +16,11 @@ export type Team = {
   name: string;
   initial: string;
   locked: boolean;
-  color?: string; // hex color for team badge
+  /** Optional accent color. When set, the team's letter avatar uses this as background. */
+  color?: string;
 };
 
-export type DocFileType =
-  | "pdf"
-  | "xls"
-  | "fig"
-  | "audio"
-  | "doc"
-  | "img"
-  | "zip";
+export type DocFileType = "pdf" | "xls" | "fig" | "audio" | "doc" | "img" | "zip";
 
 export type DocItem = {
   id: string;
@@ -39,6 +33,13 @@ export type DocItem = {
 
 export type InboxCategory = "Personal" | "Work";
 
+export type InboxReply = {
+  id: string;
+  body: string;
+  sentAt: string;
+  authorName: string;
+};
+
 export type InboxItem = {
   id: string;
   sender: string;
@@ -49,6 +50,7 @@ export type InboxItem = {
   receivedAt: string; // ISO
   hasAttachment: boolean;
   read: boolean;
+  replies: InboxReply[];
 };
 
 export type Priority = "Low" | "Medium" | "High" | "Urgent";

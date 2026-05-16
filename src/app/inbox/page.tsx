@@ -1,15 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Paperclip, Plus, ArrowLeft, Reply, Archive, Trash2, MoreHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Paperclip,
+  Plus,
+  X,
+  Reply as ReplyIcon,
+  Archive,
+  Trash2,
+  MoreHorizontal,
+  ChevronDown,
+} from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Pill } from "@/components/pill";
 import { LetterAvatar } from "@/components/letter-avatar";
 import { inbox } from "@/data/inbox";
-import { currentUser } from "@/data/workspace";
 import { groupInbox } from "@/lib/inbox-utils";
 import { useStore } from "@/lib/store";
+import { useToastStore } from "@/components/toast";
+import { currentUser } from "@/data/workspace";
 import { cn, formatTime, timeAgo } from "@/lib/utils";
+import type { InboxItem, InboxReply } from "@/lib/types";
 
 const groups = groupInbox(inbox);
 
@@ -18,12 +29,13 @@ export default function InboxPage() {
   const selectInbox = useStore((s) => s.selectInbox);
   const selected = inbox.find((i) => i.id === selectedId);
 
-  // Default to first item on desktop, but not mobile
+  // Escape to close detail
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!selectedId && window.innerWidth >= 1024) {
-      selectInbox(inbox[0]!.id);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && selectedId) selectInbox(null);
     }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [selectedId, selectInbox]);
 
   return (
@@ -36,11 +48,16 @@ export default function InboxPage() {
       </TopBar>
 
       <div className="flex-1 min-h-0 flex">
-        {/* List */}
+        {/* List — full width by default, narrows when detail is open */}
         <div
           className={cn(
-            "flex-1 lg:flex-[0_0_55%] xl:flex-[0_0_52%] border-r border-[var(--border)] overflow-y-auto scroll-thin",
-            selected && "hidden lg:block",
+            "overflow-y-auto scroll-thin",
+            // Mobile: hide list entirely if detail is showing
+            selected ? "hidden lg:block" : "block",
+            // Desktop: full width with no selection, ~48% with selection
+            selected
+              ? "lg:flex-[0_0_48%] xl:flex-[0_0_44%] border-r border-[var(--border)]"
+              : "flex-1",
           )}
         >
           {groups.map((g) => (
@@ -63,31 +80,19 @@ export default function InboxPage() {
         </div>
 
         {/* Detail */}
-        <div
-          className={cn(
-            "flex-1 lg:flex-[1_1_auto] overflow-y-auto scroll-thin bg-[var(--surface)]",
-            !selected && "hidden lg:block",
-          )}
-        >
-          {selected ? (
+        {selected && (
+          <div
+            className={cn(
+              "flex-1 lg:flex-[1_1_auto] overflow-y-auto scroll-thin bg-[var(--surface)]",
+            )}
+          >
             <InboxDetail
               key={selected.id}
               item={selected}
-              onBack={() => selectInbox(null)}
+              onClose={() => selectInbox(null)}
             />
-          ) : (
-            <div className="h-full flex items-center justify-center p-6 text-center">
-              <div>
-                <div className="text-sm text-[var(--text-muted)]">
-                  Select a message
-                </div>
-                <div className="text-xs text-[var(--text-subtle)] mt-1">
-                  Pick something from the list to read it here.
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -98,7 +103,7 @@ function InboxRow({
   selected,
   onSelect,
 }: {
-  item: (typeof inbox)[number];
+  item: InboxItem;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -108,9 +113,7 @@ function InboxRow({
         onClick={onSelect}
         className={cn(
           "w-full text-left px-5 md:px-6 py-3 flex items-center gap-3 border-b border-[var(--border)] transition-colors",
-          selected
-            ? "bg-[var(--selected)]"
-            : "hover:bg-[var(--hover)]",
+          selected ? "bg-[var(--selected)]" : "hover:bg-[var(--hover)]",
           !item.read && "font-medium",
         )}
       >
@@ -147,27 +150,71 @@ function InboxRow({
 
 function InboxDetail({
   item,
-  onBack,
+  onClose,
 }: {
-  item: (typeof inbox)[number];
-  onBack: () => void;
+  item: InboxItem;
+  onClose: () => void;
 }) {
+  // Pull user-added replies for this item from the store
+  const repliesForThisItem = useStore(
+    (s) => s.inboxRepliesByItemId[item.id] ?? [],
+  );
+  const addInboxReply = useStore((s) => s.addInboxReply);
+  const removeInboxReply = useStore((s) => s.removeInboxReply);
+  const showToast = useToastStore((s) => s.show);
+
+  // Combine seeded replies + user replies into one chronological list
+  const allReplies: InboxReply[] = [...item.replies, ...repliesForThisItem];
+
+  // Auto-scroll to the latest reply when one appears (e.g. after Send)
+  const lastReplyRef = useRef<HTMLDivElement>(null);
+
+  function handleSent(text: string) {
+    const id = addInboxReply(item.id, text);
+
+    // Scroll to the newly-added reply after layout
+    setTimeout(() => {
+      lastReplyRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 30);
+
+    showToast({
+      message: "Message sent",
+      actions: [
+        {
+          label: "Undo",
+          onClick: () => {
+            removeInboxReply(item.id, id);
+          },
+        },
+        {
+          label: "View message",
+          onClick: () => {
+            // Scroll to it
+            setTimeout(() => {
+              lastReplyRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            }, 30);
+          },
+        },
+      ],
+    });
+  }
+
   return (
     <article className="max-w-3xl mx-auto px-5 md:px-8 py-6">
       <div className="flex items-center gap-2 mb-5">
-        <button
-          onClick={onBack}
-          className="lg:hidden h-8 w-8 flex items-center justify-center rounded hover:bg-[var(--hover)]"
-        >
-          <ArrowLeft size={16} />
-        </button>
         <Pill>{item.category}</Pill>
         <span className="text-xs text-[var(--text-subtle)] tabular-nums">
           {timeAgo(item.receivedAt)}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <IconBtn label="Reply">
-            <Reply size={14} />
+            <ReplyIcon size={14} />
           </IconBtn>
           <IconBtn label="Archive">
             <Archive size={14} />
@@ -177,6 +224,9 @@ function InboxDetail({
           </IconBtn>
           <IconBtn label="More">
             <MoreHorizontal size={14} />
+          </IconBtn>
+          <IconBtn label="Close" onClick={onClose}>
+            <X size={14} />
           </IconBtn>
         </div>
       </div>
@@ -213,20 +263,170 @@ function InboxDetail({
           </button>
         </div>
       )}
+
+      {/* Replies thread */}
+      {allReplies.length > 0 && (
+        <div className="mt-10">
+          {allReplies.map((reply, i) => {
+            const isLast = i === allReplies.length - 1;
+            return (
+              <div
+                key={reply.id}
+                ref={isLast ? lastReplyRef : undefined}
+                className="border-t border-[var(--border)] pt-5 mb-5"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <LetterAvatar
+                    letter={reply.authorName.charAt(0).toUpperCase()}
+                    size="lg"
+                    filled
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">
+                      {reply.authorName}{" "}
+                      <span className="text-[var(--text-muted)] font-normal text-xs">
+                        (You)
+                      </span>
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)]">
+                      {timeAgo(reply.sentAt)}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[14.5px] leading-relaxed whitespace-pre-wrap text-[var(--text)]">
+                  {reply.body}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Reply composer */}
+      <div className="mt-10 mb-2">
+        <ReplyComposer sender={item.sender} onSent={handleSent} />
+      </div>
     </article>
+  );
+}
+
+function ReplyComposer({
+  sender,
+  onSent,
+}: {
+  sender: string;
+  onSent: (text: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [body, setBody] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function expand() {
+    setExpanded(true);
+    setTimeout(() => textareaRef.current?.focus(), 30);
+  }
+
+  function send() {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    onSent(trimmed);
+    setBody("");
+    setExpanded(false);
+  }
+
+  function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      send();
+    }
+    if (e.key === "Escape") {
+      if (body.trim().length === 0) {
+        setExpanded(false);
+        (e.target as HTMLTextAreaElement).blur();
+      }
+    }
+  }
+
+  if (!expanded) {
+    return (
+      <button
+        onClick={expand}
+        className="w-full text-left px-4 py-3 rounded-md border border-[var(--border-strong)] text-[13px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <ReplyIcon size={13} className="text-[var(--text-subtle)]" />
+          <span>Reply to {sender}…</span>
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-[var(--border-strong)] bg-[var(--surface)] overflow-hidden">
+      <div className="px-4 pt-2.5 pb-1.5 flex items-center gap-2 border-b border-[var(--border)] text-[12px]">
+        <span className="text-[var(--text-muted)]">To:</span>
+        <span className="text-[var(--text)]">{sender}</span>
+        <ChevronDown size={11} className="text-[var(--text-subtle)] ml-0.5" />
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        onKeyDown={handleKey}
+        placeholder="Type your reply…"
+        rows={5}
+        className="w-full px-4 py-3 text-[14px] leading-relaxed bg-transparent border-none outline-none focus:outline-none focus:ring-0 placeholder:text-[var(--text-subtle)] resize-none"
+      />
+      <div className="px-4 py-2.5 flex items-center justify-between border-t border-[var(--border)] bg-[var(--bg)]">
+        <span className="text-[11px] text-[var(--text-subtle)]">
+          Press{" "}
+          <kbd className="px-1 py-0.5 rounded border border-[var(--border-strong)] text-[10px] bg-[var(--surface-2)]">
+            ⌘ + Enter
+          </kbd>{" "}
+          to send
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setBody("");
+              setExpanded(false);
+            }}
+            className="h-7 px-3 text-[12px] rounded text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          >
+            Discard
+          </button>
+          <button
+            onClick={send}
+            disabled={!body.trim()}
+            className={cn(
+              "h-7 px-4 rounded text-[12px] font-medium transition-colors",
+              body.trim()
+                ? "bg-[var(--text)] text-[var(--surface)] hover:opacity-90"
+                : "bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed",
+            )}
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function IconBtn({
   children,
   label,
+  onClick,
 }: {
   children: React.ReactNode;
   label: string;
+  onClick?: () => void;
 }) {
   return (
     <button
+      onClick={onClick}
       title={label}
+      aria-label={label}
       className="h-8 w-8 flex items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
     >
       {children}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   MoreHorizontal,
   Search,
@@ -14,14 +14,31 @@ import { SearchPopover } from "@/components/search-popover";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
 
 type Props = {
   title: string;
   children?: ReactNode;
+  /** When provided, clicking the `···` button calls this. Used for team pages. */
+  onMoreClick?: () => void;
+  /** When true, double-clicking the title (or programmatic trigger via startEditingTitle ref) makes it editable. */
+  editableTitle?: boolean;
+  /** Called when an inline-edited title commits */
+  onTitleChange?: (next: string) => void;
+  /** Ref-like callback the parent can use to programmatically start editing */
+  registerStartEditing?: (fn: () => void) => void;
+  /** Whether the `···` button is currently in pressed state */
+  morePressed?: boolean;
 };
 
-export function TopBar({ title, children }: Props) {
+export function TopBar({
+  title,
+  children,
+  onMoreClick,
+  editableTitle = false,
+  onTitleChange,
+  registerStartEditing,
+  morePressed = false,
+}: Props) {
   const setMobileSidebar = useStore((s) => s.setMobileSidebar);
   const notifications = useStore((s) => s.notifications);
   const unread = notifications.filter((n) => !n.read).length;
@@ -30,7 +47,45 @@ export function TopBar({ title, children }: Props) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Mutual exclusivity — only one popover open at a time
+  // Inline title editing
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Allow parent to start editing programmatically (used by team menu "Rename")
+  useEffect(() => {
+    if (registerStartEditing) {
+      registerStartEditing(() => {
+        setDraftTitle(title);
+        setEditing(true);
+        setTimeout(() => {
+          titleInputRef.current?.focus();
+          titleInputRef.current?.select();
+        }, 30);
+      });
+    }
+  }, [registerStartEditing, title]);
+
+  // Sync draftTitle when title prop changes (e.g. after rename commit)
+  useEffect(() => {
+    if (!editing) setDraftTitle(title);
+  }, [title, editing]);
+
+  function commitTitle() {
+    const next = draftTitle.trim();
+    if (next && next !== title) {
+      onTitleChange?.(next);
+    } else {
+      setDraftTitle(title);
+    }
+    setEditing(false);
+  }
+
+  function cancelTitle() {
+    setDraftTitle(title);
+    setEditing(false);
+  }
+
   function openSearch() {
     setNotifOpen(false);
     setUserMenuOpen(false);
@@ -58,10 +113,48 @@ export function TopBar({ title, children }: Props) {
       </button>
 
       <div className="flex items-center gap-2 min-w-0">
-        <h1 className="text-[15px] font-medium truncate">{title}</h1>
+        {editing ? (
+          <input
+            ref={titleInputRef}
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitTitle();
+              if (e.key === "Escape") cancelTitle();
+            }}
+            className="text-[15px] font-medium bg-transparent border border-[var(--border-strong)] focus:outline-none focus:ring-0 rounded px-1.5 py-0.5 -my-0.5 min-w-[120px]"
+            maxLength={60}
+          />
+        ) : (
+          <h1
+            onDoubleClick={() => {
+              if (editableTitle) {
+                setDraftTitle(title);
+                setEditing(true);
+                setTimeout(() => {
+                  titleInputRef.current?.focus();
+                  titleInputRef.current?.select();
+                }, 30);
+              }
+            }}
+            className={cn(
+              "text-[15px] font-medium truncate",
+              editableTitle && "cursor-text",
+            )}
+            title={editableTitle ? "Double-click to rename" : undefined}
+          >
+            {title}
+          </h1>
+        )}
         <button
-          className="h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)]"
-          aria-label="More"
+          data-team-menu-trigger
+          onClick={onMoreClick}
+          className={cn(
+            "h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)]",
+            morePressed && "bg-[var(--hover)] text-[var(--text)]",
+          )}
+          aria-label="More options"
         >
           <MoreHorizontal size={14} />
         </button>

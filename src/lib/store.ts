@@ -10,6 +10,7 @@ import type {
   Notification,
   PersonAccess,
   SharePermission,
+  InboxReply,
 } from "@/lib/types";
 import { seedTasks } from "@/data/tasks";
 import { teams as seedTeams } from "@/data/workspace";
@@ -21,6 +22,8 @@ type AppState = {
   notifications: Notification[];
   selectedTaskByTeam: Record<string, string | null>;
   selectedInboxId: string | null;
+  /** Replies the user has added to inbox items. Indexed by inbox item id. */
+  inboxRepliesByItemId: Record<string, InboxReply[]>;
   sidebarCollapsed: boolean;
   mobileSidebarOpen: boolean;
 
@@ -30,7 +33,8 @@ type AppState = {
     initial: string;
     locked: boolean;
   }) => string;
-  updateTeamColor: (teamId: string, color: string) => void;
+  updateTeamColor: (teamId: string, color: string | undefined) => void;
+  renameTeam: (teamId: string, name: string) => void;
 
   // tasks
   addTask: (teamId: string, title: string, createdBy: string) => string;
@@ -58,6 +62,10 @@ type AppState = {
 
   // inbox
   selectInbox: (id: string | null) => void;
+  /** Append a reply to an inbox item. Returns the reply id. */
+  addInboxReply: (itemId: string, body: string) => string;
+  /** Remove a reply (e.g. for Undo). */
+  removeInboxReply: (itemId: string, replyId: string) => void;
 
   // notifications
   markNotificationRead: (id: string) => void;
@@ -90,6 +98,7 @@ export const useStore = create<AppState>()(
         seedTasks.map((t) => [t.teamId, t.id]),
       ),
       selectedInboxId: null,
+      inboxRepliesByItemId: {},
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
 
@@ -116,8 +125,28 @@ export const useStore = create<AppState>()(
 
       updateTeamColor: (teamId, color) =>
         set((s) => ({
-          teams: s.teams.map((t) => (t.id === teamId ? { ...t, color } : t)),
+          teams: s.teams.map((t) =>
+            t.id === teamId ? { ...t, color } : t,
+          ),
         })),
+
+      renameTeam: (teamId, name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        // Also update the team's initial if it was auto-derived from the old name
+        set((s) => ({
+          teams: s.teams.map((t) => {
+            if (t.id !== teamId) return t;
+            // Heuristic: if current initial was the first char of the current name (case-insensitive),
+            // re-derive from the new name. Otherwise leave initial alone (user explicitly set it).
+            const initial =
+              t.initial.toLowerCase() === t.name.charAt(0).toLowerCase()
+                ? trimmed.charAt(0).toUpperCase()
+                : t.initial;
+            return { ...t, name: trimmed, initial };
+          }),
+        }));
+      },
 
       addTask: (teamId, title, createdBy) => {
         const id = `task-${Date.now()}`;
@@ -271,6 +300,33 @@ export const useStore = create<AppState>()(
 
       selectInbox: (id) => set({ selectedInboxId: id }),
 
+      addInboxReply: (itemId, body) => {
+        const id = `reply-${Date.now()}`;
+        const reply: InboxReply = {
+          id,
+          body,
+          sentAt: nowISO(),
+          authorName: "Temitope Aiyegbusi",
+        };
+        set((s) => ({
+          inboxRepliesByItemId: {
+            ...s.inboxRepliesByItemId,
+            [itemId]: [...(s.inboxRepliesByItemId[itemId] ?? []), reply],
+          },
+        }));
+        return id;
+      },
+
+      removeInboxReply: (itemId, replyId) =>
+        set((s) => ({
+          inboxRepliesByItemId: {
+            ...s.inboxRepliesByItemId,
+            [itemId]: (s.inboxRepliesByItemId[itemId] ?? []).filter(
+              (r) => r.id !== replyId,
+            ),
+          },
+        })),
+
       markNotificationRead: (id) =>
         set((s) => ({
           notifications: s.notifications.map((n) =>
@@ -289,13 +345,14 @@ export const useStore = create<AppState>()(
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
     }),
     {
-      name: "workspace-app-state-v3",
+      name: "workspace-app-state-v5",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         tasks: s.tasks,
         teams: s.teams,
         notifications: s.notifications,
         selectedTaskByTeam: s.selectedTaskByTeam,
+        inboxRepliesByItemId: s.inboxRepliesByItemId,
         sidebarCollapsed: s.sidebarCollapsed,
       }),
       // Defensive merge: persisted tasks from older schema versions may lack
@@ -318,6 +375,11 @@ export const useStore = create<AppState>()(
           ...currentState,
           ...persisted,
           tasks,
+          inboxRepliesByItemId:
+            persisted.inboxRepliesByItemId &&
+            typeof persisted.inboxRepliesByItemId === "object"
+              ? persisted.inboxRepliesByItemId
+              : {},
         };
       },
     },

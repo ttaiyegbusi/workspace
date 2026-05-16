@@ -1,11 +1,13 @@
 import { cn } from "@/lib/utils";
+import { getContrast } from "@/data/team-colors";
 
 type Props = {
   letter: string;
   size?: "xs" | "sm" | "md" | "lg";
   filled?: boolean;
+  /** Custom background color (e.g. a team's chosen color). Overrides `filled` defaults. */
+  color?: string;
   className?: string;
-  style?: React.CSSProperties;
 };
 
 const sizeMap = {
@@ -19,20 +21,28 @@ export function LetterAvatar({
   letter,
   size = "sm",
   filled = false,
+  color,
   className,
-  style,
 }: Props) {
+  // When a custom color is provided, render with inline styles so the swatch
+  // shows through both light and dark mode unaltered.
+  const inlineStyle = color
+    ? { backgroundColor: color, color: getContrast(color) ?? "#fff" }
+    : undefined;
+
   return (
     <span
-      style={style}
       className={cn(
         "inline-flex items-center justify-center rounded-[3px] font-medium select-none flex-shrink-0",
         sizeMap[size],
-        filled
-          ? "bg-[var(--text)] text-[var(--surface)]"
-          : "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]",
+        // Only apply default classes if no explicit color was given
+        !color &&
+          (filled
+            ? "bg-[var(--text)] text-[var(--surface)]"
+            : "bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]"),
         className,
       )}
+      style={inlineStyle}
       aria-hidden
     >
       {letter}

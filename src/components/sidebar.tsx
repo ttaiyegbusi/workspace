@@ -81,7 +81,10 @@ export function Sidebar() {
         />
       </aside>
 
-      <CreateTeamModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateTeamModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </>
   );
 }
@@ -174,56 +177,33 @@ function SidebarTeams({
         {teams.map((t) => {
           const active = pathname === `/teams/${t.id}`;
           return (
-            <TeamItem
+            <Link
               key={t.id}
-              team={t}
-              active={active}
-              collapsed={collapsed}
-            />
+              href={`/teams/${t.id}`}
+              className={cn(
+                "h-8 flex items-center gap-2.5 px-2 rounded text-sm transition-colors",
+                active
+                  ? "bg-[var(--selected)] text-[var(--text)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]",
+                collapsed && "md:justify-center md:px-0",
+              )}
+              title={collapsed ? t.name : undefined}
+            >
+              <LetterAvatar letter={t.initial} size="xs" color={t.color} />
+              <span className={cn("flex-1 truncate", collapsed && "md:hidden")}>
+                {t.name}
+              </span>
+              {t.locked && !collapsed && (
+                <Lock
+                  size={11}
+                  className="text-[var(--text-subtle)] flex-shrink-0"
+                />
+              )}
+            </Link>
           );
         })}
       </nav>
     </div>
-  );
-}
-
-function TeamItem({
-  team,
-  active,
-  collapsed,
-}: {
-  team: any;
-  active: boolean;
-  collapsed: boolean;
-}) {
-  return (
-    <Link
-      href={`/teams/${team.id}`}
-      className={cn(
-        "flex items-center gap-2.5 h-8 px-2 rounded text-sm transition-colors",
-        active
-          ? "bg-[var(--selected)] text-[var(--text)]"
-          : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]",
-        collapsed && "md:justify-center md:px-0",
-      )}
-      title={team.name}
-    >
-      <LetterAvatar
-        letter={team.initial}
-        size="xs"
-        style={
-          team.color
-            ? { backgroundColor: team.color, borderColor: team.color }
-            : {}
-        }
-      />
-      <span className={cn("flex-1 truncate", collapsed && "md:hidden")}>
-        {team.name}
-      </span>
-      {team.locked && !collapsed && (
-        <Lock size={11} className="text-[var(--text-subtle)] flex-shrink-0" />
-      )}
-    </Link>
   );
 }
 
@@ -345,7 +325,13 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-function MenuItem({ icon: Icon, label }: { icon: typeof Home; label: string }) {
+function MenuItem({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Home;
+  label: string;
+}) {
   return (
     <button className="w-full px-3 h-9 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
       <Icon size={14} className="text-[var(--text-muted)]" strokeWidth={1.6} />

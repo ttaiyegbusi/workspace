@@ -272,7 +272,13 @@ export function SearchPopover({ open, onClose }: Props) {
                     key={t.id}
                     onClick={() => go(`/teams/${t.id}`)}
                     onDismiss={() => dismiss(`team:${t.id}`)}
-                    leading={<LetterAvatar letter={t.initial} size="sm" />}
+                    leading={
+                      <LetterAvatar
+                        letter={t.initial}
+                        size="sm"
+                        color={t.color}
+                      />
+                    }
                     title={t.name}
                     sub={t.locked ? "Private team" : "Team"}
                   />

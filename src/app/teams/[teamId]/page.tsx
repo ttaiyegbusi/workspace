@@ -10,10 +10,6 @@ import {
   Smile,
   ExternalLink,
   Users as UsersIcon,
-  MoreHorizontal,
-  Copy,
-  Heart,
-  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { TopBar } from "@/components/top-bar";
@@ -22,11 +18,11 @@ import { PriorityPill } from "@/components/priority-pill";
 import { LetterAvatar } from "@/components/letter-avatar";
 import { SharePopover } from "@/components/share-popover";
 import { ShareSuccessModal } from "@/components/share-success-modal";
+import { TeamMenu } from "@/components/team-menu";
 import { useStore } from "@/lib/store";
 import { currentUser } from "@/data/workspace";
 import { docs } from "@/data/docs";
 import { cn, formatDate, formatTime, timeAgo } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
 
 type Tab = "overview" | "getting-started" | "board" | "list-view";
 
@@ -48,14 +44,23 @@ export default function TeamPage({
   const [shareOpen, setShareOpen] = useState(false);
   const [successLabel, setSuccessLabel] = useState<string | null>(null);
 
+  // Team context menu (triggered by the `···` in the top bar)
+  const [teamMenuOpen, setTeamMenuOpen] = useState(false);
+  const renameTeam = useStore((s) => s.renameTeam);
+
+  // Hook the TopBar's inline-edit trigger so the Team menu's "Rename" item can fire it
+  const startEditingRef = useRef<(() => void) | null>(null);
+
   // Pull stable references from the store, then derive in render.
   // (Filtering inside a Zustand selector returns a new array each call,
   // which triggers infinite re-renders.)
   const allTasks = useStore((s) => s.tasks);
   const selectedTaskByTeam = useStore((s) => s.selectedTaskByTeam);
 
-  const tasks = team ? allTasks.filter((t) => t.teamId === team.id) : [];
-  const selectedTaskId = team ? (selectedTaskByTeam[team.id] ?? null) : null;
+  const tasks = team
+    ? allTasks.filter((t) => t.teamId === team.id)
+    : [];
+  const selectedTaskId = team ? selectedTaskByTeam[team.id] ?? null : null;
   const activeTask = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
   // Graceful render when the team genuinely doesn't exist (e.g. typo'd URL).
@@ -88,14 +93,25 @@ export default function TeamPage({
 
   return (
     <>
-      <TopBar title={team?.name ?? ""} />
+      <TopBar
+        title={team?.name ?? ""}
+        editableTitle={!!team}
+        onTitleChange={(next) => team && renameTeam(team.id, next)}
+        registerStartEditing={(fn) => {
+          startEditingRef.current = fn;
+        }}
+        onMoreClick={() => setTeamMenuOpen((v) => !v)}
+        morePressed={teamMenuOpen}
+      />
 
-      {/* Team Header with Menu */}
       {team && (
-        <div className="px-5 md:px-8 py-4 border-b border-[var(--border)] flex items-center justify-between">
-          <h1 className="text-2xl font-medium">{team.name}</h1>
-          <TeamMenuButton teamId={team.id} teamName={team.name} />
-        </div>
+        <TeamMenu
+          open={teamMenuOpen}
+          onClose={() => setTeamMenuOpen(false)}
+          teamId={team.id}
+          onStartRename={() => startEditingRef.current?.()}
+          onOpenShare={() => setShareOpen(true)}
+        />
       )}
 
       <div className="relative border-b border-[var(--border)] px-5 md:px-8 flex items-center">
@@ -145,9 +161,7 @@ export default function TeamPage({
       </div>
 
       {tab === "overview" && team && <Overview teamId={team.id} />}
-      {tab === "getting-started" && (
-        <ComingSoonInline label="Getting Started" />
-      )}
+      {tab === "getting-started" && <ComingSoonInline label="Getting Started" />}
       {tab === "board" && <ComingSoonInline label="Board" />}
       {tab === "list-view" && <ComingSoonInline label="List View" />}
 
@@ -471,8 +485,8 @@ function EmptyRightPanel() {
         </div>
         <div className="flex-1 flex items-center justify-center px-5 text-center">
           <div className="text-xs text-[var(--text-subtle)] leading-relaxed">
-            Comments will appear here once you create a task and the team starts
-            discussing it.
+            Comments will appear here once you create a task and the team
+            starts discussing it.
           </div>
         </div>
 
@@ -624,41 +638,70 @@ function RightPanel({ taskId }: { taskId: string }) {
 
   const recentActivities = task.activities.slice(-5);
 
+  // Padding constants applied identically to every row in both Activities and Comments.
+  const ROW_PX = "px-5 lg:px-6";
+  const SECTION_HEADER_PX = "px-5 lg:px-6";
+
   return (
     <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
-      <div className="px-5 lg:px-6 pt-5 pb-3">
-        <h3 className="text-[13px] font-medium mb-3">Activities</h3>
-        <ul>
-          {recentActivities.map((a, i) => (
-            <ActivityItem
-              key={a.id}
-              authorName={a.authorName}
-              action={a.action}
-              timestamp={timeAgo(a.createdAt)}
-              isLast={i === recentActivities.length - 1}
-            />
-          ))}
-        </ul>
-      </div>
+      {/* Single scroll container for both lists so padding is uniform */}
+      <div className="flex-1 overflow-y-auto scroll-thin min-h-0">
+        {/* Activities */}
+        <section className="pt-5 pb-3">
+          <h3 className={cn("text-[13px] font-medium mb-3", SECTION_HEADER_PX)}>
+            Activities
+          </h3>
+          <ul>
+            {recentActivities.map((a, i) => (
+              <ListRow
+                key={a.id}
+                paddingX={ROW_PX}
+                avatar={
+                  <LetterAvatar
+                    letter={a.authorName.charAt(0).toUpperCase()}
+                    size="sm"
+                    className="relative z-[1]"
+                  />
+                }
+                threadLine={i !== recentActivities.length - 1}
+                bodyPaddingBottom="pb-4 last:pb-0"
+              >
+                <div className="text-[13px] leading-tight">
+                  <span className="font-medium">{a.authorName}</span>{" "}
+                  <span className="text-[var(--text-muted)]">{a.action}</span>
+                </div>
+                <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">
+                  {timeAgo(a.createdAt)}
+                </div>
+              </ListRow>
+            ))}
+          </ul>
+        </section>
 
-      <div className="border-t border-[var(--border)] flex-1 min-h-0 flex flex-col">
-        <div className="px-5 lg:px-6 pt-4 pb-2">
-          <h3 className="text-[13px] font-medium">Comments</h3>
-        </div>
-        <ul className="flex-1 overflow-y-auto scroll-thin px-5 lg:px-6 pb-3 space-y-4">
-          {task.comments.length === 0 && (
-            <li className="text-xs text-[var(--text-subtle)]">
-              No comments yet — kick off the conversation.
-            </li>
-          )}
-          {task.comments.map((c) => (
-            <li key={c.id} className="relative flex items-start gap-2.5 pb-4">
-              <LetterAvatar
-                letter={c.authorName.charAt(0).toUpperCase()}
-                size="sm"
-                className="relative z-[1]"
-              />
-              <div className="min-w-0 flex-1">
+        {/* Comments */}
+        <section className="border-t border-[var(--border)] pt-4 pb-3">
+          <h3 className={cn("text-[13px] font-medium mb-3", SECTION_HEADER_PX)}>
+            Comments
+          </h3>
+          <ul>
+            {task.comments.length === 0 && (
+              <li className={cn("text-xs text-[var(--text-subtle)]", ROW_PX)}>
+                No comments yet — kick off the conversation.
+              </li>
+            )}
+            {task.comments.map((c) => (
+              <ListRow
+                key={c.id}
+                paddingX={ROW_PX}
+                avatar={
+                  <LetterAvatar
+                    letter={c.authorName.charAt(0).toUpperCase()}
+                    size="sm"
+                    className="relative z-[1]"
+                  />
+                }
+                bodyPaddingBottom="pb-4 last:pb-0"
+              >
                 <div className="flex items-center gap-1.5 text-[12px]">
                   <span className="font-medium">{c.authorName}</span>
                   <span className="text-[var(--text-subtle)]">•</span>
@@ -669,106 +712,82 @@ function RightPanel({ taskId }: { taskId: string }) {
                 <div className="text-[13px] mt-1 leading-relaxed text-[var(--text)]">
                   {c.body}
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </ListRow>
+            ))}
+          </ul>
+        </section>
+      </div>
 
-        <div className="border-t border-[var(--border)] p-3 flex items-center gap-2">
-          <input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder="Add a comment"
-            className="flex-1 h-9 px-3 text-[13px] bg-[var(--surface-2)] rounded outline-none placeholder:text-[var(--text-subtle)]"
-          />
-          <button
-            className="h-9 w-9 flex items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--hover)]"
-            aria-label="Add emoji"
-          >
-            <Smile size={15} />
-          </button>
-          <button
-            onClick={send}
-            disabled={!draft.trim()}
-            className={cn(
-              "h-9 px-4 rounded text-[13px] font-medium transition-colors",
-              draft.trim()
-                ? "bg-[var(--text)] text-[var(--surface)] hover:opacity-90"
-                : "bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed",
-            )}
-          >
-            Send
-          </button>
-        </div>
+      {/* Composer */}
+      <div className="border-t border-[var(--border)] p-3 flex items-center gap-2">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder="Add a comment"
+          className="flex-1 h-9 px-3 text-[13px] bg-[var(--surface-2)] rounded outline-none placeholder:text-[var(--text-subtle)]"
+        />
+        <button
+          className="h-9 w-9 flex items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--hover)]"
+          aria-label="Add emoji"
+        >
+          <Smile size={15} />
+        </button>
+        <button
+          onClick={send}
+          disabled={!draft.trim()}
+          className={cn(
+            "h-9 px-4 rounded text-[13px] font-medium transition-colors",
+            draft.trim()
+              ? "bg-[var(--text)] text-[var(--surface)] hover:opacity-90"
+              : "bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed",
+          )}
+        >
+          Send
+        </button>
       </div>
     </aside>
   );
 }
 
-function TeamMenuButton({
-  teamId,
-  teamName,
+/** Single primitive used by both Activities and Comments so they stay aligned.
+ *  Renders: paddingX on the li, avatar, optional thread line (Activities only),
+ *  and the body content next to the avatar. */
+function ListRow({
+  paddingX,
+  avatar,
+  threadLine = false,
+  bodyPaddingBottom,
+  children,
 }: {
-  teamId: string;
-  teamName: string;
+  paddingX: string;
+  avatar: React.ReactNode;
+  threadLine?: boolean;
+  bodyPaddingBottom?: string;
+  children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const updateTeamColor = useStore((s) => s.updateTeamColor);
-  const team = useStore((s) => s.teams.find((t) => t.id === teamId))!;
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setColorPickerOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const colors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#0ea5e9", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b"];
-
   return (
-    <div ref={menuRef} className="relative">
-      <button onClick={() => setOpen(!open)} className="h-8 w-8 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)] transition-colors" title="Team options">
-        <MoreHorizontal size={18} />
-      </button>
-      {open && (
-        <div className="absolute top-full right-0 mt-1 w-[200px] z-50 rounded-md bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)] py-1">
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Rename</span></button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><Copy size={14} /><span>Copy Link</span></button>
-          <button onClick={() => setColorPickerOpen(!colorPickerOpen)} className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left relative"><span>Color & Icon</span><ChevronDown size={12} className="ml-auto" /></button>
-          {colorPickerOpen && (
-            <div className="px-3 py-2 bg-[var(--surface-2)] border-t border-[var(--border)]">
-              <div className="grid grid-cols-5 gap-2">
-                {colors.map((color) => (
-                  <button key={color} onClick={() => { updateTeamColor(teamId, color); setOpen(false); setColorPickerOpen(false); }} className="h-6 w-6 rounded border-2 hover:scale-110 transition-transform" style={{ backgroundColor: color, borderColor: team.color === color ? "#000" : "transparent" }} title={color} />
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="h-px bg-[var(--border)] mx-2 my-1" />
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Templates</span></button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Automations</span></button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Custom Fields</span></button>
-          <div className="h-px bg-[var(--border)] mx-2 my-1" />
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><Heart size={14} /><span>Add to Favorites</span></button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><Eye size={14} /><span>Hide Team</span></button>
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Duplicate</span></button>
-          <div className="h-px bg-[var(--border)] mx-2 my-1" />
-          <button className="w-full px-3 h-8 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left"><span>Sharing and Permissions</span></button>
-        </div>
+    <li
+      className={cn(
+        "relative flex items-start gap-2.5",
+        paddingX,
+        bodyPaddingBottom,
       )}
-    </div>
+    >
+      {threadLine && (
+        <span
+          aria-hidden
+          className="absolute left-[calc(1.25rem+11px)] lg:left-[calc(1.5rem+11px)] top-7 bottom-1 w-px bg-[var(--border)]"
+        />
+      )}
+      {avatar}
+      <div className="min-w-0 flex-1">{children}</div>
+    </li>
   );
 }
