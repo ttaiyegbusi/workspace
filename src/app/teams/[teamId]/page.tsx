@@ -57,10 +57,8 @@ export default function TeamPage({
   const allTasks = useStore((s) => s.tasks);
   const selectedTaskByTeam = useStore((s) => s.selectedTaskByTeam);
 
-  const tasks = team
-    ? allTasks.filter((t) => t.teamId === team.id)
-    : [];
-  const selectedTaskId = team ? selectedTaskByTeam[team.id] ?? null : null;
+  const tasks = team ? allTasks.filter((t) => t.teamId === team.id) : [];
+  const selectedTaskId = team ? (selectedTaskByTeam[team.id] ?? null) : null;
   const activeTask = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
   // Graceful render when the team genuinely doesn't exist (e.g. typo'd URL).
@@ -161,7 +159,9 @@ export default function TeamPage({
       </div>
 
       {tab === "overview" && team && <Overview teamId={team.id} />}
-      {tab === "getting-started" && <ComingSoonInline label="Getting Started" />}
+      {tab === "getting-started" && (
+        <ComingSoonInline label="Getting Started" />
+      )}
       {tab === "board" && <ComingSoonInline label="Board" />}
       {tab === "list-view" && <ComingSoonInline label="List View" />}
 
@@ -485,8 +485,8 @@ function EmptyRightPanel() {
         </div>
         <div className="flex-1 flex items-center justify-center px-5 text-center">
           <div className="text-xs text-[var(--text-subtle)] leading-relaxed">
-            Comments will appear here once you create a task and the team
-            starts discussing it.
+            Comments will appear here once you create a task and the team starts
+            discussing it.
           </div>
         </div>
 
@@ -639,8 +639,8 @@ function RightPanel({ taskId }: { taskId: string }) {
   const recentActivities = task.activities.slice(-5);
 
   // Padding constants applied identically to every row in both Activities and Comments.
-  const ROW_PX = "px-5 lg:px-6";
-  const SECTION_HEADER_PX = "px-5 lg:px-6";
+  const ROW_PX = "px-5";
+  const SECTION_HEADER_PX = "px-5";
 
   return (
     <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
@@ -719,7 +719,7 @@ function RightPanel({ taskId }: { taskId: string }) {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-[var(--border)] p-3 flex items-center gap-2">
+      <div className="border-t border-[var(--border)] px-5 py-3 flex items-center gap-2">
         <input
           ref={inputRef}
           value={draft}
