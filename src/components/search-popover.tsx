@@ -29,6 +29,8 @@ type Props = {
 export function SearchPopover({ open, onClose }: Props) {
   const router = useRouter();
   const teams = useStore((s) => s.teams);
+  const deletedDocIds = useStore((s) => s.deletedDocIds);
+  const docNameOverrides = useStore((s) => s.docNameOverrides);
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<Set<Filter>>(
     new Set(ALL_FILTERS),
@@ -110,11 +112,17 @@ export function SearchPopover({ open, onClose }: Props) {
 
   const docResults = useMemo(() => {
     if (!activeFilters.has("documents") || !hasQuery) return [];
-    return docs.filter(
-      (d) =>
-        !dismissed.has(`doc:${d.id}`) && d.name.toLowerCase().includes(q),
-    );
-  }, [activeFilters, q, hasQuery, dismissed]);
+    const deletedSet = new Set(deletedDocIds);
+    return docs
+      .filter((d) => !deletedSet.has(d.id))
+      .map((d) =>
+        docNameOverrides[d.id] ? { ...d, name: docNameOverrides[d.id]! } : d,
+      )
+      .filter(
+        (d) =>
+          !dismissed.has(`doc:${d.id}`) && d.name.toLowerCase().includes(q),
+      );
+  }, [activeFilters, q, hasQuery, dismissed, deletedDocIds, docNameOverrides]);
 
   const linkResults = useMemo(() => {
     if (!activeFilters.has("links") || !hasQuery) return [];

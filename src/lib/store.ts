@@ -67,6 +67,17 @@ type AppState = {
   /** Remove a reply (e.g. for Undo). */
   removeInboxReply: (itemId: string, replyId: string) => void;
 
+  // docs
+  /** Ids of docs the user has deleted. Hides them everywhere. */
+  deletedDocIds: string[];
+  /** Map of docId → user-renamed name. Overrides the seed name. */
+  docNameOverrides: Record<string, string>;
+  deleteDoc: (id: string) => void;
+  /** Restore a deleted doc (used by Undo). */
+  restoreDoc: (id: string) => void;
+  /** Rename a doc. Empty/whitespace names are ignored. */
+  renameDoc: (id: string, name: string) => void;
+
   // notifications
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -99,6 +110,8 @@ export const useStore = create<AppState>()(
       ),
       selectedInboxId: null,
       inboxRepliesByItemId: {},
+      deletedDocIds: [],
+      docNameOverrides: {},
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
 
@@ -327,6 +340,26 @@ export const useStore = create<AppState>()(
           },
         })),
 
+      deleteDoc: (id) =>
+        set((s) =>
+          s.deletedDocIds.includes(id)
+            ? s
+            : { deletedDocIds: [...s.deletedDocIds, id] },
+        ),
+
+      restoreDoc: (id) =>
+        set((s) => ({
+          deletedDocIds: s.deletedDocIds.filter((d) => d !== id),
+        })),
+
+      renameDoc: (id, name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        set((s) => ({
+          docNameOverrides: { ...s.docNameOverrides, [id]: trimmed },
+        }));
+      },
+
       markNotificationRead: (id) =>
         set((s) => ({
           notifications: s.notifications.map((n) =>
@@ -345,7 +378,7 @@ export const useStore = create<AppState>()(
       setMobileSidebar: (open) => set({ mobileSidebarOpen: open }),
     }),
     {
-      name: "workspace-app-state-v5",
+      name: "workspace-app-state-v6",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         tasks: s.tasks,
@@ -353,6 +386,8 @@ export const useStore = create<AppState>()(
         notifications: s.notifications,
         selectedTaskByTeam: s.selectedTaskByTeam,
         inboxRepliesByItemId: s.inboxRepliesByItemId,
+        deletedDocIds: s.deletedDocIds,
+        docNameOverrides: s.docNameOverrides,
         sidebarCollapsed: s.sidebarCollapsed,
       }),
       // Defensive merge: persisted tasks from older schema versions may lack
@@ -379,6 +414,14 @@ export const useStore = create<AppState>()(
             persisted.inboxRepliesByItemId &&
             typeof persisted.inboxRepliesByItemId === "object"
               ? persisted.inboxRepliesByItemId
+              : {},
+          deletedDocIds: Array.isArray(persisted.deletedDocIds)
+            ? persisted.deletedDocIds
+            : [],
+          docNameOverrides:
+            persisted.docNameOverrides &&
+            typeof persisted.docNameOverrides === "object"
+              ? persisted.docNameOverrides
               : {},
         };
       },

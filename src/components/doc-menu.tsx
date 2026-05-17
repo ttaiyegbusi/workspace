@@ -11,16 +11,23 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** A trigger + dropdown menu for a single document's actions. Stub-only. */
+type Props = {
+  align?: "left" | "right";
+  size?: "sm" | "md";
+  onDownload: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+};
+
+/** Per-doc actions dropdown. Open and Move are stubs; the others fire real
+ *  callbacks (the page handles store mutations + toast). */
 export function DocMenu({
   align = "right",
   size = "md",
-}: {
-  /** Where the menu opens relative to the trigger. */
-  align?: "left" | "right";
-  /** Size of the trigger icon-button. */
-  size?: "sm" | "md";
-}) {
+  onDownload,
+  onRename,
+  onDelete,
+}: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -41,6 +48,13 @@ export function DocMenu({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  function wrap(fn: () => void) {
+    return () => {
+      setOpen(false);
+      fn();
+    };
+  }
 
   return (
     <div ref={ref} className="relative flex-shrink-0">
@@ -65,27 +79,22 @@ export function DocMenu({
             "absolute top-full mt-1 z-30 w-[170px] rounded-md bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-md)] py-1",
             align === "right" ? "right-0" : "left-0",
           )}
-          // Stop clicks inside the menu from bubbling up to a parent <Link> or row click
           onClick={(e) => e.stopPropagation()}
         >
-          <Item icon={ExternalLink} label="Open" onClick={() => setOpen(false)} />
-          <Item
-            icon={Download}
-            label="Download"
-            onClick={() => setOpen(false)}
-          />
-          <Item icon={Pencil} label="Rename" onClick={() => setOpen(false)} />
+          <Item icon={ExternalLink} label="Open" onClick={wrap(() => {})} />
+          <Item icon={Download} label="Download" onClick={wrap(onDownload)} />
+          <Item icon={Pencil} label="Rename" onClick={wrap(onRename)} />
           <Item
             icon={FolderInput}
             label="Move to folder"
-            onClick={() => setOpen(false)}
+            onClick={wrap(() => {})}
           />
           <div className="h-px bg-[var(--border)] mx-2 my-1" />
           <Item
             icon={Trash2}
             label="Delete"
             destructive
-            onClick={() => setOpen(false)}
+            onClick={wrap(onDelete)}
           />
         </div>
       )}
@@ -109,15 +118,13 @@ function Item({
       onClick={onClick}
       className={cn(
         "w-full px-2.5 h-8 flex items-center gap-2 text-sm hover:bg-[var(--hover)] text-left",
-        destructive ? "text-[var(--danger,#dc2626)]" : "text-[var(--text)]",
+        destructive ? "text-[var(--danger)]" : "text-[var(--text)]",
       )}
     >
       <Icon
         size={13}
         className={cn(
-          destructive
-            ? "text-[var(--danger,#dc2626)]"
-            : "text-[var(--text-muted)]",
+          destructive ? "text-[var(--danger)]" : "text-[var(--text-muted)]",
         )}
         strokeWidth={1.6}
       />
