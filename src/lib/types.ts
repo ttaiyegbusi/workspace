@@ -9,15 +9,6 @@ export type Member = {
   status: MemberStatus;
   role: string;
   initial?: string;
-  department: string;
-  lineManager: string;
-  leaveBalance: number;
-  timeZone: string;
-  phone: string;
-  location: string;
-  startDate: string;
-  employmentType: string;
-  office: string;
 };
 
 export type Team = {
@@ -29,14 +20,7 @@ export type Team = {
   color?: string;
 };
 
-export type DocFileType =
-  | "pdf"
-  | "xls"
-  | "fig"
-  | "audio"
-  | "doc"
-  | "img"
-  | "zip";
+export type DocFileType = "pdf" | "xls" | "fig" | "audio" | "doc" | "img" | "zip";
 
 export type DocItem = {
   id: string;

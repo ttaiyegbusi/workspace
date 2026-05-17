@@ -57,8 +57,10 @@ export default function TeamPage({
   const allTasks = useStore((s) => s.tasks);
   const selectedTaskByTeam = useStore((s) => s.selectedTaskByTeam);
 
-  const tasks = team ? allTasks.filter((t) => t.teamId === team.id) : [];
-  const selectedTaskId = team ? (selectedTaskByTeam[team.id] ?? null) : null;
+  const tasks = team
+    ? allTasks.filter((t) => t.teamId === team.id)
+    : [];
+  const selectedTaskId = team ? selectedTaskByTeam[team.id] ?? null : null;
   const activeTask = tasks.find((t) => t.id === selectedTaskId) ?? tasks[0];
 
   // Graceful render when the team genuinely doesn't exist (e.g. typo'd URL).
@@ -112,66 +114,62 @@ export default function TeamPage({
         />
       )}
 
-      <div className="mx-auto w-full max-w-[1600px]">
-        <div className="relative border-b border-[var(--border)] px-5 md:px-6 flex items-center">
-          <div className="flex gap-5 md:gap-7 overflow-x-auto scroll-thin flex-1">
-            <TabBtn
-              label="Overview"
-              active={tab === "overview"}
-              onClick={() => setTab("overview")}
-            />
-            <TabBtn
-              label="Getting Started"
-              active={tab === "getting-started"}
-              onClick={() => setTab("getting-started")}
-            />
-            <TabBtn
-              label="Board"
-              active={tab === "board"}
-              onClick={() => setTab("board")}
-            />
-            <TabBtn
-              label="List View"
-              active={tab === "list-view"}
-              onClick={() => setTab("list-view")}
-            />
-          </div>
-
-          {/* Share button — only shown when there's an active task to share */}
-          {tab === "overview" && activeTask && (
-            <button
-              data-share-trigger
-              onClick={() => setShareOpen((v) => !v)}
-              className="ml-3 flex items-center gap-1.5 h-8 px-2.5 rounded text-[13px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0"
-            >
-              <span>Share</span>
-              <ExternalLink size={11} strokeWidth={1.6} />
-            </button>
-          )}
-
-          {activeTask && (
-            <SharePopover
-              open={shareOpen}
-              onClose={() => setShareOpen(false)}
-              taskId={activeTask.id}
-              onSent={(label) => setSuccessLabel(label)}
-            />
-          )}
+      <div className="relative border-b border-[var(--border)] px-5 md:px-8 flex items-center">
+        <div className="flex gap-5 md:gap-7 overflow-x-auto scroll-thin flex-1">
+          <TabBtn
+            label="Overview"
+            active={tab === "overview"}
+            onClick={() => setTab("overview")}
+          />
+          <TabBtn
+            label="Getting Started"
+            active={tab === "getting-started"}
+            onClick={() => setTab("getting-started")}
+          />
+          <TabBtn
+            label="Board"
+            active={tab === "board"}
+            onClick={() => setTab("board")}
+          />
+          <TabBtn
+            label="List View"
+            active={tab === "list-view"}
+            onClick={() => setTab("list-view")}
+          />
         </div>
 
-        {tab === "overview" && team && <Overview teamId={team.id} />}
-        {tab === "getting-started" && (
-          <ComingSoonInline label="Getting Started" />
+        {/* Share button — only shown when there's an active task to share */}
+        {tab === "overview" && activeTask && (
+          <button
+            data-share-trigger
+            onClick={() => setShareOpen((v) => !v)}
+            className="ml-3 flex items-center gap-1.5 h-8 px-2.5 rounded text-[13px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0"
+          >
+            <span>Share</span>
+            <ExternalLink size={11} strokeWidth={1.6} />
+          </button>
         )}
-        {tab === "board" && <ComingSoonInline label="Board" />}
-        {tab === "list-view" && <ComingSoonInline label="List View" />}
 
-        <ShareSuccessModal
-          open={successLabel !== null}
-          label={successLabel ?? ""}
-          onClose={() => setSuccessLabel(null)}
-        />
+        {activeTask && (
+          <SharePopover
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            taskId={activeTask.id}
+            onSent={(label) => setSuccessLabel(label)}
+          />
+        )}
       </div>
+
+      {tab === "overview" && team && <Overview teamId={team.id} />}
+      {tab === "getting-started" && <ComingSoonInline label="Getting Started" />}
+      {tab === "board" && <ComingSoonInline label="Board" />}
+      {tab === "list-view" && <ComingSoonInline label="List View" />}
+
+      <ShareSuccessModal
+        open={successLabel !== null}
+        label={successLabel ?? ""}
+        onClose={() => setSuccessLabel(null)}
+      />
     </>
   );
 }
@@ -233,7 +231,7 @@ function Overview({ teamId }: { teamId: string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
       <div className="flex-1 overflow-y-auto scroll-thin">
-        <div className="px-5 md:px-6 py-6 md:py-8 max-w-3xl">
+        <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
           <TaskTitle
             key={task.id}
             value={task.title}
@@ -388,7 +386,7 @@ function EmptyTeamForm({ teamId }: { teamId: string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
       <div className="flex-1 overflow-y-auto scroll-thin">
-        <div className="px-5 md:px-6 py-6 md:py-8 max-w-3xl">
+        <div className="px-5 md:px-10 py-6 md:py-8 max-w-3xl">
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -468,89 +466,69 @@ function EmptyRightPanel() {
   })} at ${formatTime(createdAt.toISOString())}`;
 
   return (
-    <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
-      <div className="px-5 pt-5 pb-3">
-        <h3 className="text-[13px] font-medium mb-3">Activities</h3>
-        <ul>
-          <ActivityItem
-            authorName={currentUser.fullName}
-            action="created a Task"
-            timestamp={timestamp}
-            isLast
-          />
-        </ul>
+    <aside
+      className={cn(
+        "w-full lg:w-[360px] xl:w-[400px]",
+        "border-t lg:border-t-0 lg:border-l border-[var(--border)]",
+        "bg-[var(--bg)]",
+        "flex flex-col min-h-0 flex-1 lg:flex-none",
+      )}
+    >
+      <div className="flex-1 overflow-y-auto scroll-thin min-h-0">
+        <section className="pt-5 pb-3">
+          <h3 className="px-6 text-[13px] font-medium mb-3">Activities</h3>
+          <ul>
+            <TimelineRow
+              avatar={
+                <LetterAvatar
+                  letter={currentUser.fullName.charAt(0).toUpperCase()}
+                  size="sm"
+                  className="relative z-[1]"
+                />
+              }
+              showThread={false}
+            >
+              <div className="text-[13px] leading-tight">
+                <span className="font-medium">{currentUser.fullName}</span>{" "}
+                <span className="text-[var(--text-muted)]">created a Task</span>
+              </div>
+              <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">
+                {timestamp}
+              </div>
+            </TimelineRow>
+          </ul>
+        </section>
+
+        <section className="border-t border-[var(--border)] pt-4 pb-3">
+          <h3 className="px-6 text-[13px] font-medium mb-3">Comments</h3>
+          <div className="px-6 text-xs text-[var(--text-subtle)] leading-relaxed">
+            Comments will appear here once you create a task and the team
+            starts discussing it.
+          </div>
+        </section>
       </div>
 
-      <div className="border-t border-[var(--border)] flex-1 min-h-0 flex flex-col">
-        <div className="px-5 pt-4 pb-2">
-          <h3 className="text-[13px] font-medium">Comments</h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center px-5 text-center">
-          <div className="text-xs text-[var(--text-subtle)] leading-relaxed">
-            Comments will appear here once you create a task and the team starts
-            discussing it.
-          </div>
-        </div>
-
-        <div className="border-t border-[var(--border)] p-3 flex items-center gap-2 opacity-50">
-          <input
-            disabled
-            placeholder="Add a comment"
-            className="flex-1 h-9 px-3 text-[13px] bg-[var(--surface-2)] rounded outline-none placeholder:text-[var(--text-subtle)] cursor-not-allowed"
-          />
-          <button
-            disabled
-            className="h-9 w-9 flex items-center justify-center rounded text-[var(--text-muted)]"
-            aria-label="Add emoji"
-          >
-            <Smile size={15} />
-          </button>
-          <button
-            disabled
-            className="h-9 px-4 rounded text-[13px] font-medium bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed"
-          >
-            Send
-          </button>
-        </div>
+      <div className="border-t border-[var(--border)] px-3 py-3 flex items-center gap-2 opacity-50 bg-[var(--bg)]">
+        <input
+          disabled
+          placeholder="Add a comment"
+          className="flex-1 h-9 px-3 text-[13px] bg-transparent rounded outline-none placeholder:text-[var(--text-subtle)] cursor-not-allowed"
+        />
+        <button
+          disabled
+          className="h-9 w-9 flex items-center justify-center rounded text-[var(--text-muted)]"
+          aria-label="Add emoji"
+        >
+          <Smile size={15} />
+        </button>
+        <button
+          disabled
+          className="h-9 px-4 rounded text-[13px] font-medium bg-[var(--surface-2)] text-[var(--text-subtle)] cursor-not-allowed"
+        >
+          Send
+        </button>
       </div>
     </aside>
-  );
-}
-
-function ActivityItem({
-  authorName,
-  action,
-  timestamp,
-  isLast = false,
-}: {
-  authorName: string;
-  action: string;
-  timestamp: string;
-  isLast?: boolean;
-}) {
-  return (
-    <li className="relative flex items-start gap-2.5 pb-4 last:pb-0">
-      {!isLast && (
-        <span
-          aria-hidden
-          className="absolute left-[11px] top-7 bottom-1 w-px bg-[var(--border)]"
-        />
-      )}
-      <LetterAvatar
-        letter={authorName.charAt(0).toUpperCase()}
-        size="sm"
-        className="relative z-[1]"
-      />
-      <div className="min-w-0 flex-1">
-        <div className="text-[13px] leading-tight">
-          <span className="font-medium">{authorName}</span>{" "}
-          <span className="text-[var(--text-muted)]">{action}</span>
-        </div>
-        <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">
-          {timestamp}
-        </div>
-      </div>
-    </li>
   );
 }
 
@@ -640,24 +618,30 @@ function RightPanel({ taskId }: { taskId: string }) {
 
   const recentActivities = task.activities.slice(-5);
 
-  // Padding constants applied identically to every row in both Activities and Comments.
-  const ROW_PX = "px-2";
-  const SECTION_HEADER_PX = "px-2";
-
   return (
-    <aside className="w-full lg:w-[360px] xl:w-[400px] lg:border-l border-t lg:border-t-0 border-[var(--border)] flex flex-col min-h-0 bg-[var(--bg)]">
-      {/* Single scroll container for both lists so padding is uniform */}
+    <aside
+      className={cn(
+        // Width: full on small, fixed on lg+
+        "w-full lg:w-[360px] xl:w-[400px]",
+        // Borders: top on small (separates from main content above), left on lg+
+        "border-t lg:border-t-0 lg:border-l border-[var(--border)]",
+        // Background
+        "bg-[var(--bg)]",
+        // Flex column with the composer pinned at the bottom.
+        // flex-1 on small screens lets the aside grow to fill remaining viewport
+        // height so the composer actually sits at the bottom of the page.
+        "flex flex-col min-h-0 flex-1 lg:flex-none",
+      )}
+    >
+      {/* Scrollable: Activities + Comments */}
       <div className="flex-1 overflow-y-auto scroll-thin min-h-0">
         {/* Activities */}
         <section className="pt-5 pb-3">
-          <h3 className={cn("text-[13px] font-medium mb-3", SECTION_HEADER_PX)}>
-            Activities
-          </h3>
+          <h3 className="px-6 text-[13px] font-medium mb-3">Activities</h3>
           <ul>
             {recentActivities.map((a, i) => (
-              <ListRow
+              <TimelineRow
                 key={a.id}
-                paddingX={ROW_PX}
                 avatar={
                   <LetterAvatar
                     letter={a.authorName.charAt(0).toUpperCase()}
@@ -665,8 +649,7 @@ function RightPanel({ taskId }: { taskId: string }) {
                     className="relative z-[1]"
                   />
                 }
-                threadLine={i !== recentActivities.length - 1}
-                bodyPaddingBottom="pb-4 last:pb-0"
+                showThread={i !== recentActivities.length - 1}
               >
                 <div className="text-[13px] leading-tight">
                   <span className="font-medium">{a.authorName}</span>{" "}
@@ -675,26 +658,23 @@ function RightPanel({ taskId }: { taskId: string }) {
                 <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">
                   {timeAgo(a.createdAt)}
                 </div>
-              </ListRow>
+              </TimelineRow>
             ))}
           </ul>
         </section>
 
         {/* Comments */}
         <section className="border-t border-[var(--border)] pt-4 pb-3">
-          <h3 className={cn("text-[13px] font-medium mb-3", SECTION_HEADER_PX)}>
-            Comments
-          </h3>
+          <h3 className="px-6 text-[13px] font-medium mb-3">Comments</h3>
           <ul>
             {task.comments.length === 0 && (
-              <li className={cn("text-xs text-[var(--text-subtle)]", ROW_PX)}>
+              <li className="px-6 text-xs text-[var(--text-subtle)]">
                 No comments yet — kick off the conversation.
               </li>
             )}
             {task.comments.map((c) => (
-              <ListRow
+              <TimelineRow
                 key={c.id}
-                paddingX={ROW_PX}
                 avatar={
                   <LetterAvatar
                     letter={c.authorName.charAt(0).toUpperCase()}
@@ -702,7 +682,7 @@ function RightPanel({ taskId }: { taskId: string }) {
                     className="relative z-[1]"
                   />
                 }
-                bodyPaddingBottom="pb-4 last:pb-0"
+                showThread={false}
               >
                 <div className="flex items-center gap-1.5 text-[12px]">
                   <span className="font-medium">{c.authorName}</span>
@@ -714,14 +694,14 @@ function RightPanel({ taskId }: { taskId: string }) {
                 <div className="text-[13px] mt-1 leading-relaxed text-[var(--text)]">
                   {c.body}
                 </div>
-              </ListRow>
+              </TimelineRow>
             ))}
           </ul>
         </section>
       </div>
 
-      {/* Composer */}
-      <div className="border-t border-[var(--border)] px-2 py-3 flex items-center gap-2">
+      {/* Composer — pinned to the bottom, edge-to-edge with top border */}
+      <div className="border-t border-[var(--border)] px-3 py-3 flex items-center gap-2 bg-[var(--bg)]">
         <input
           ref={inputRef}
           value={draft}
@@ -733,7 +713,7 @@ function RightPanel({ taskId }: { taskId: string }) {
             }
           }}
           placeholder="Add a comment"
-          className="flex-1 h-9 px-3 text-[13px] bg-[var(--surface-2)] rounded outline-none placeholder:text-[var(--text-subtle)]"
+          className="flex-1 h-9 px-3 text-[13px] bg-transparent rounded outline-none focus:outline-none focus:ring-0 placeholder:text-[var(--text-subtle)]"
         />
         <button
           className="h-9 w-9 flex items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--hover)]"
@@ -758,34 +738,33 @@ function RightPanel({ taskId }: { taskId: string }) {
   );
 }
 
-/** Single primitive used by both Activities and Comments so they stay aligned.
- *  Renders: paddingX on the li, avatar, optional thread line (Activities only),
- *  and the body content next to the avatar. */
-function ListRow({
-  paddingX,
+/** A row used by both Activities and Comments in the right rail.
+ *  Uses px-6 (24px) horizontal padding on all breakpoints.
+ *  The thread line is a per-row segment that runs from below this row's
+ *  avatar through to the next row, so it stays connected regardless of
+ *  variable row heights. */
+function TimelineRow({
   avatar,
-  threadLine = false,
-  bodyPaddingBottom,
+  showThread,
   children,
 }: {
-  paddingX: string;
   avatar: React.ReactNode;
-  threadLine?: boolean;
-  bodyPaddingBottom?: string;
+  showThread: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <li
-      className={cn(
-        "relative flex items-start gap-1.5",
-        paddingX,
-        bodyPaddingBottom,
-      )}
-    >
-      {threadLine && (
+    <li className="relative flex items-start gap-2.5 px-6 pb-4 last:pb-0">
+      {showThread && (
         <span
           aria-hidden
-          className="absolute left-[calc(1.25rem+11px)] lg:left-[calc(1.5rem+11px)] top-7 bottom-1 w-px bg-[var(--border)]"
+          // Horizontal: padding (24px) + half of 24px avatar = 36px from left.
+          // We use `calc(1.5rem + 12px)` so it's robust if padding changes.
+          // Vertical: starts just below the 24px avatar (at top: 28px) and
+          // extends past the row's pb-4 (16px) into the next row's start.
+          // top-7 = 28px; bottom-0 + extending via -mb hack would be flaky,
+          // so we use `bottom: -8px` to overshoot into the next row.
+          className="absolute left-[calc(1.5rem+12px)] top-7 -translate-x-1/2 w-px bg-[var(--border)]"
+          style={{ bottom: "-4px" }}
         />
       )}
       {avatar}
