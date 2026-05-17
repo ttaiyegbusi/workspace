@@ -6,7 +6,15 @@ import { ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const weekdayShort = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const weekdayFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const weekdayFull = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 const monthNames = [
   "January",
   "February",
@@ -99,8 +107,9 @@ export default function CalendarPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentMonth((prev) =>
-                    new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+                  setCurrentMonth(
+                    (prev) =>
+                      new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
                   )
                 }
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -108,12 +117,15 @@ export default function CalendarPage() {
               >
                 <ChevronLeft size={16} />
               </button>
-              <div className="text-sm font-medium text-[var(--text)]">{monthLabel}</div>
+              <div className="text-sm font-medium text-[var(--text)]">
+                {monthLabel}
+              </div>
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentMonth((prev) =>
-                    new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+                  setCurrentMonth(
+                    (prev) =>
+                      new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
                   )
                 }
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]"
