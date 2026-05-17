@@ -203,3 +203,29 @@ ol {
 .day-cell:nth-child(7n) {
   border-right: 0;
 }
+
+/* Calendar header label crossfade — used when the month name updates as the
+ * user scrolls between months. Mimics Apple Calendar's soft transitions. */
+@keyframes month-label-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-month-label {
+  animation: month-label-in 220ms ease-out;
+}
+
+/* Subtle fade-in for each month block as it enters the scroll viewport.
+ * Triggered when we add the .calendar-month-revealed class via IO. */
+.calendar-month {
+  opacity: 0.6;
+  transition: opacity 320ms ease-out;
+}
+.calendar-month.calendar-month-revealed {
+  opacity: 1;
+}

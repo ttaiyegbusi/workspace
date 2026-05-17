@@ -236,3 +236,17 @@ export function bucketByDay(events: CalendarEvent[]): Map<string, CalendarEvent[
 export function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+/** Generate N months of dates centered around `anchor`. `before` and `after`
+ *  control how many months on each side. Returns an array of "first day of
+ *  each month" Dates from oldest to newest. */
+export function monthRange(anchor: Date, before: number, after: number): Date[] {
+  return Array.from({ length: before + after + 1 }, (_, i) =>
+    startOfMonth(addMonths(anchor, i - before)),
+  );
+}
+
+/** Format the Day view's date heading. "17 May 2026" */
+export function fullDayHeading(d: Date): string {
+  return `${d.getDate()} ${monthLabel(d)} ${d.getFullYear()}`;
+}
