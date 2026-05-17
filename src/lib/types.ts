@@ -2,6 +2,33 @@ export type WorkspaceRole = "Admin" | "Member";
 
 export type MemberStatus = "Active" | "Inactive" | "Pending";
 
+/** Detailed profile shown on the member profile page. Optional — for members
+ *  without a hand-authored blob, we auto-generate plausible values at runtime. */
+export type MemberProfile = {
+  // Personal
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  maritalStatus: "Single" | "Married" | "Divorced" | "Widowed";
+  stateOfOrigin: string;
+  lga: string;
+  nationality: string;
+  dateOfBirth: string;
+  title: "Mr" | "Mrs" | "Ms" | "Dr";
+  placeOfBirth: string;
+  nextOfKin: string;
+  nextOfKinRelationship: string;
+  mothersMaidenName: string;
+  spouseName: string | null;
+  noOfChildren: number | null;
+  bloodGroup: "O+" | "O-" | "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-";
+
+  // Stats column
+  lineManager: string;
+  department: string;
+  leaveBalance: number;
+};
+
 export type Member = {
   id: string;
   name: string;
@@ -9,6 +36,8 @@ export type Member = {
   status: MemberStatus;
   role: string;
   initial?: string;
+  /** Detailed profile. When omitted we synthesise one. */
+  profile?: MemberProfile;
 };
 
 export type Team = {

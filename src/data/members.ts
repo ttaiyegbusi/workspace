@@ -46,7 +46,7 @@ function pick<T>(arr: T[], i: number): T {
   return arr[i % arr.length]!;
 }
 
-export const members: Member[] = Array.from({ length: 32 }).map((_, i) => {
+const generated: Member[] = Array.from({ length: 31 }).map((_, i) => {
   const name = `${pick(firstNames, i)} ${pick(lastNames, i + 3)}`;
   const emailUser = pick(emails, i);
   const statusRoll = i % 7;
@@ -57,13 +57,26 @@ export const members: Member[] = Array.from({ length: 32 }).map((_, i) => {
         ? "Inactive"
         : "Active";
   return {
-    id: `m-${i + 1}`,
+    id: `m-${i + 2}`,
     name,
     email: `${emailUser}@example.com`,
     status,
     role: pick(roles, i + 2),
   };
 });
+
+// Temitope (the current user) lives at the top of the member directory so
+// clicking her surfaces the hand-authored profile.
+const temitope: Member = {
+  id: "m-1",
+  name: "Temitope Aiyegbusi",
+  email: "temitope@workspace.org",
+  status: "Active",
+  role: "Product Designer",
+  initial: "T",
+};
+
+export const members: Member[] = [temitope, ...generated];
 
 export const memberCounts = {
   all: members.length,
