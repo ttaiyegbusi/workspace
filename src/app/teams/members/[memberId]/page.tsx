@@ -16,15 +16,6 @@ import {
   Lock,
   ChevronDown,
   Pencil,
-  Settings,
-  Calendar,
-  PieChart,
-  BarChart3,
-  ClipboardList,
-  Wrench,
-  Truck,
-  Package,
-  Users as UsersIcon,
 } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LetterAvatar } from "@/components/letter-avatar";
@@ -52,24 +43,6 @@ const TABS: Array<{
   { id: "security", label: "Security", icon: Lock },
 ];
 
-// Decorative icons strip behind the hero avatar
-const HERO_ICONS = [
-  Briefcase,
-  Settings,
-  Calendar,
-  PieChart,
-  BarChart3,
-  ClipboardList,
-  Wrench,
-  Truck,
-  Package,
-  UsersIcon,
-  Briefcase,
-  Settings,
-  Calendar,
-  PieChart,
-];
-
 export default function MemberProfilePage({
   params,
 }: {
@@ -82,8 +55,6 @@ export default function MemberProfilePage({
   const [tab, setTab] = useState<Tab>("personal");
   const [nigerianTime, setNigerianTime] = useState("");
 
-  // Render Lagos local time, refreshed every minute. Build a string client-side
-  // to avoid a server/client hydration mismatch on the time value.
   useEffect(() => {
     function update() {
       const now = new Date();
@@ -93,7 +64,6 @@ export default function MemberProfilePage({
         minute: "2-digit",
         hour12: true,
       });
-      // "6:45 PM" → "6:45pm"
       setNigerianTime(formatted.replace(" ", "").toLowerCase());
     }
     update();
@@ -129,7 +99,6 @@ export default function MemberProfilePage({
   const initial = (member.initial ?? member.name.charAt(0)).toUpperCase();
 
   function goBack() {
-    // If history has an entry, use it; otherwise fall back to /teams
     if (window.history.length > 1) {
       router.back();
     } else {
@@ -141,7 +110,7 @@ export default function MemberProfilePage({
     <>
       <TopBar title="Teams" />
 
-      {/* Secondary header row: Back / Invite New */}
+      {/* Secondary header row */}
       <div className="flex items-center justify-between px-5 md:px-8 py-3 border-b border-[var(--border)]">
         <button
           onClick={goBack}
@@ -156,14 +125,13 @@ export default function MemberProfilePage({
         </button>
       </div>
 
-      {/* Page body */}
       <div className="flex-1 overflow-y-auto scroll-thin">
-        <div className="px-5 md:px-8 py-5 md:py-6 max-w-6xl">
+        {/* No max-width — content fills the viewport with gutters */}
+        <div className="px-5 md:px-8 py-5 md:py-6">
           {/* Hero + Stats row */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-4 mb-6">
             <HeroCard
               member={member}
-              profile={profile}
               initial={initial}
               nigerianTime={nigerianTime}
             />
@@ -208,56 +176,59 @@ function tabLabel(id: Tab): string {
 
 function HeroCard({
   member,
-  profile,
   initial,
   nigerianTime,
 }: {
-  member: ReturnType<typeof getMemberById> & object;
-  profile: ReturnType<typeof getMemberProfile>;
+  member: NonNullable<ReturnType<typeof getMemberById>>;
   initial: string;
   nigerianTime: string;
 }) {
   return (
-    <div className="relative bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden">
-      {/* Decorative icon strip */}
-      <div className="absolute top-0 left-0 right-0 h-20 flex items-center gap-6 px-6 opacity-[0.18] pointer-events-none">
-        {HERO_ICONS.map((Icon, i) => (
-          <Icon
-            key={i}
-            size={20}
-            strokeWidth={1.5}
-            className="text-[var(--text)] flex-shrink-0"
-          />
-        ))}
-      </div>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-md border border-[var(--border)]",
+        "bg-[var(--surface-2)]",
+      )}
+    >
+      {/* Repeating icon-pattern background. Tiled across the card. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-repeat opacity-[0.45] dark:opacity-[0.12] dark:invert"
+        style={{
+          backgroundImage: "url(/profile-bg.png)",
+          backgroundSize: "auto 88px",
+        }}
+      />
 
-      <div className="relative px-5 md:px-6 pt-5 pb-5 flex flex-col md:flex-row md:items-end gap-4">
-        {/* Avatar with status dot */}
-        <div className="relative inline-block">
-          <div className="h-24 w-24 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-3xl font-medium overflow-hidden">
+      {/* Content */}
+      <div className="relative px-5 md:px-7 pt-6 pb-5 flex items-end gap-4 min-h-[230px]">
+        {/* Left column: avatar, location, name, role */}
+        <div className="flex-1 min-w-0">
+          {/* Avatar with status dot */}
+          <div className="relative inline-block mb-4">
             <LetterAvatar
               letter={initial}
               size="lg"
-              className="!h-24 !w-24 !text-3xl !rounded-full border-0"
+              className="!h-[88px] !w-[88px] !text-3xl !rounded-full !bg-[var(--surface)] border-2 border-[var(--surface)] shadow-[var(--shadow-sm)]"
             />
+            {member.status === "Active" && (
+              <span
+                aria-label="Active"
+                className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full bg-[#16a34a] border-2 border-[var(--surface-2)]"
+              />
+            )}
           </div>
-          {member.status === "Active" && (
-            <span
-              aria-label="Active"
-              className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full bg-[#16a34a] border-2 border-[var(--surface-2)]"
-            />
-          )}
-        </div>
 
-        {/* Name + meta */}
-        <div className="flex-1 min-w-0 mt-1 md:mt-0">
-          <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)] mb-1.5">
+          {/* Location + time */}
+          <div className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)] mb-2">
             <MapPin size={12} />
             <span>
               {nigerianTime ? `${nigerianTime}, Nigerian Time` : "Nigerian Time"}
             </span>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+
+          {/* Name + status pill */}
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             <h1 className="text-xl md:text-2xl font-medium tracking-tight">
               {member.name}
             </h1>
@@ -278,13 +249,13 @@ function HeroCard({
               </span>
             )}
           </div>
-          <div className="text-sm text-[var(--text-muted)] mt-1">
-            {member.role}
-          </div>
+
+          {/* Role */}
+          <div className="text-sm text-[var(--text-muted)]">{member.role}</div>
         </div>
 
-        {/* Edit Image */}
-        <button className="h-8 px-3 rounded border border-[var(--border-strong)] text-[12px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0 self-end md:self-auto">
+        {/* Right: Edit Image, aligned to bottom-right */}
+        <button className="h-8 px-3 rounded border border-[var(--border-strong)] bg-[var(--surface)] text-[12px] text-[var(--text)] hover:bg-[var(--hover)] flex-shrink-0 self-end">
           Edit Image
         </button>
       </div>
@@ -375,11 +346,7 @@ function PersonalDetailsTab({
         <Field label="First Name" value={profile.firstName} />
         <Field label="Middle Name" value={profile.middleName} />
         <Field label="Last Name" value={profile.lastName} />
-        <Field
-          label="Marital Status"
-          value={profile.maritalStatus}
-          dropdown
-        />
+        <Field label="Marital Status" value={profile.maritalStatus} dropdown />
 
         <Field label="State of Origin" value={profile.stateOfOrigin} dropdown />
         <Field label="Local Government Area" value={profile.lga} dropdown />
@@ -398,7 +365,9 @@ function PersonalDetailsTab({
         <Field label="Spouse Name" value={profile.spouseName ?? "-"} />
         <Field
           label="No of Children"
-          value={profile.noOfChildren === null ? "-" : String(profile.noOfChildren)}
+          value={
+            profile.noOfChildren === null ? "-" : String(profile.noOfChildren)
+          }
         />
         <Field label="Blood Group" value={profile.bloodGroup} dropdown />
       </div>
