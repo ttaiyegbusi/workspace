@@ -1,246 +1,402 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, List, LayoutGrid } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
-import { ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
+import { useStore } from "@/lib/store";
+import { useLocalStoragePref } from "@/lib/use-local-storage-pref";
+import {
+  addDays,
+  addMonths,
+  buildEvents,
+  bucketByDay,
+  dayKey,
+  dayName,
+  dayShort,
+  eventTimeLabel,
+  fullMonthYear,
+  isSameDay,
+  monthGridDays,
+  monthLabel,
+  startOfMonth,
+  startOfWeek,
+  weekDays,
+} from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
+import type { CalendarEvent } from "@/lib/calendar-utils";
 
-const weekdayShort = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const weekdayFull = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-type CalendarView = "week" | "month";
-
-type DayCell = {
-  date: Date;
-  label: string;
-  inMonth: boolean;
-};
-
-function getMonthGrid(year: number, month: number) {
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const cells: DayCell[] = [];
-
-  const startOffset = first.getDay();
-  for (let i = startOffset - 1; i >= 0; i -= 1) {
-    const date = new Date(year, month, -i);
-    cells.push({ date, label: String(date.getDate()), inMonth: false });
-  }
-
-  for (let day = 1; day <= last.getDate(); day += 1) {
-    const date = new Date(year, month, day);
-    cells.push({ date, label: String(day), inMonth: true });
-  }
-
-  const remainder = (7 - (cells.length % 7)) % 7;
-  for (let day = 1; day <= remainder; day += 1) {
-    const date = new Date(year, month + 1, day);
-    cells.push({ date, label: String(date.getDate()), inMonth: false });
-  }
-
-  return cells;
-}
-
-function getWeekDays(year: number, month: number, weekIndex: number) {
-  const grid = getMonthGrid(year, month);
-  const weeks: DayCell[][] = [];
-  for (let i = 0; i < grid.length; i += 7) {
-    weeks.push(grid.slice(i, i + 7));
-  }
-  return weeks[weekIndex] ?? weeks[0] ?? [];
-}
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
+type View = "week" | "month";
 
 export default function CalendarPage() {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 0, 1));
-  const [view, setView] = useState<CalendarView>("month");
+  const router = useRouter();
+  const tasks = useStore((s) => s.tasks);
 
-  const monthLabel = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
-  const monthCells = useMemo(
-    () => getMonthGrid(currentMonth.getFullYear(), currentMonth.getMonth()),
-    [currentMonth],
-  );
+  const [view, setView] = useLocalStoragePref<View>("calendar-view", "month");
 
-  const today = useMemo(() => new Date(2026, 0, 21), []);
-  const weekCells = useMemo(
-    () => getWeekDays(currentMonth.getFullYear(), currentMonth.getMonth(), 3),
-    [currentMonth],
+  // The current "anchor" date: in Week mode it's any day in the visible week;
+  // in Month mode it's any day in the visible month. Defaults to today on
+  // each mount (we don't persist this — calendars expect to land on "today").
+  const [anchor, setAnchor] = useState<Date | null>(null);
+  // Today is also derived after mount to avoid SSR/client timezone mismatch
+  const [today, setToday] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    setAnchor(now);
+    setToday(now);
+  }, []);
+
+  // Derive events after mount so server-rendered HTML doesn't depend on local time
+  const events: CalendarEvent[] = useMemo(
+    () => (today ? buildEvents(tasks) : []),
+    [tasks, today],
   );
+  const eventsByDay = useMemo(() => bucketByDay(events), [events]);
+
+  function step(direction: -1 | 1) {
+    if (!anchor) return;
+    if (view === "week") {
+      setAnchor(addDays(anchor, direction * 7));
+    } else {
+      setAnchor(addMonths(anchor, direction));
+    }
+  }
+
+  function handleEventClick(ev: CalendarEvent) {
+    if (ev.source === "task" && ev.teamId) {
+      router.push(`/teams/${ev.teamId}`);
+    }
+    // Standalone events are stubs — no-op
+  }
+
+  // Decide what month label to show in the header
+  const headerLabel = anchor ? fullMonthYear(anchor) : "";
+  const navLabel = anchor ? monthLabel(anchor) : "";
 
   return (
     <>
       <TopBar title="Calendar" />
 
-      <div className="flex-1 min-h-0 px-5 md:px-8 lg:px-10 py-5">
-        <div className="max-w-7xl mx-auto space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-3">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setCurrentMonth(
-                    (prev) =>
-                      new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-                  )
-                }
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]"
-                aria-label="Previous month"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <div className="text-sm font-medium text-[var(--text)]">
-                {monthLabel}
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  setCurrentMonth(
-                    (prev) =>
-                      new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-                  )
-                }
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]"
-                aria-label="Next month"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+      {/* Header row */}
+      <div className="px-5 md:px-8 py-4 border-b border-[var(--border)] flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-xl md:text-2xl font-medium tracking-tight">
+          {headerLabel || "\u00A0"}
+        </h1>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setView("week")}
-                className={cn(
-                  "rounded-full border px-3 py-2 text-[13px] transition-colors",
-                  view === "week"
-                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--surface)]"
-                    : "border-transparent text-[var(--text-muted)] hover:border-[var(--border)] hover:text-[var(--text)]",
-                )}
-              >
-                Week
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("month")}
-                className={cn(
-                  "rounded-full border px-3 py-2 text-[13px] transition-colors",
-                  view === "month"
-                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--surface)]"
-                    : "border-transparent text-[var(--text-muted)] hover:border-[var(--border)] hover:text-[var(--text)]",
-                )}
-              >
-                Month
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors",
-                  view === "week"
-                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--surface)]"
-                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]",
-                )}
-                aria-label="Week view"
-              >
-                <List size={14} />
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors",
-                  view === "month"
-                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--surface)]"
-                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]",
-                )}
-                aria-label="Month view"
-              >
-                <LayoutGrid size={14} />
-              </button>
-            </div>
+        <div className="flex items-center gap-3">
+          {/* Month navigator */}
+          <div className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded h-8 px-1.5">
+            <button
+              onClick={() => step(-1)}
+              aria-label="Previous"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)]"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-[12px] text-[var(--text)] min-w-[68px] text-center">
+              {navLabel || "\u00A0"}
+            </span>
+            <button
+              onClick={() => step(1)}
+              aria-label="Next"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--hover)] text-[var(--text-muted)]"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
 
-          {view === "month" ? (
-            <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-              <div className="grid grid-cols-7 gap-2 text-[11px] uppercase tracking-[0.24em] text-[var(--text-subtle)]">
-                {weekdayShort.map((weekday) => (
-                  <div key={weekday} className="text-center">
-                    {weekday}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 grid grid-cols-7 gap-2">
-                {monthCells.map((cell) => (
-                  <div
-                    key={cell.date.toISOString()}
-                    className={cn(
-                      "min-h-[120px] rounded-3xl border border-[var(--border)] p-3 text-sm",
-                      cell.inMonth
-                        ? "bg-[var(--surface)] text-[var(--text)]"
-                        : "bg-[var(--surface-2)] text-[var(--text-muted)]",
-                    )}
-                  >
-                    <span className="font-medium">{cell.label}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className="space-y-3">
-              {weekCells.map((cell) => (
-                <div
-                  key={cell.date.toISOString()}
-                  className="flex items-center justify-between rounded-3xl border border-[var(--border)] bg-[var(--surface)] px-6 py-8"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[var(--text-muted)]" />
-                    <span className="text-sm font-medium text-[var(--text-muted)]">
-                      {weekdayFull[cell.date.getDay()]}
-                    </span>
-                  </div>
-                  <span
-                    className={cn(
-                      "text-6xl font-semibold",
-                      isSameDay(cell.date, today)
-                        ? "text-[var(--text)]"
-                        : "text-[var(--text-muted)]",
-                    )}
-                  >
-                    {cell.label}
-                  </span>
-                </div>
-              ))}
-            </section>
-          )}
+          {/* View toggle */}
+          <div className="inline-flex items-center border border-[var(--border)] rounded h-8 overflow-hidden">
+            <SegBtn
+              active={view === "week"}
+              onClick={() => setView("week")}
+              icon={<List size={13} />}
+              label="Week"
+            />
+            <SegBtn
+              active={view === "month"}
+              onClick={() => setView("month")}
+              icon={<LayoutGrid size={13} />}
+              label="Month"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto scroll-thin">
+        {anchor && today && view === "week" && (
+          <WeekView
+            anchor={anchor}
+            today={today}
+            eventsByDay={eventsByDay}
+            onEventClick={handleEventClick}
+          />
+        )}
+        {anchor && today && view === "month" && (
+          <MonthView
+            anchor={anchor}
+            today={today}
+            eventsByDay={eventsByDay}
+            onEventClick={handleEventClick}
+          />
+        )}
+        {/* SSR placeholder: empty container, no flash of unstyled grid */}
+        {(!anchor || !today) && <div aria-hidden className="h-full" />}
+      </div>
     </>
+  );
+}
+
+// ---------- Segmented button (Week / Month) ----------
+
+function SegBtn({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "h-full px-2.5 flex items-center gap-1.5 text-[12px] transition-colors",
+        active
+          ? "bg-[var(--text)] text-[var(--surface)]"
+          : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--hover)]",
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+// ---------- Week view ----------
+
+function WeekView({
+  anchor,
+  today,
+  eventsByDay,
+  onEventClick,
+}: {
+  anchor: Date;
+  today: Date;
+  eventsByDay: Map<string, CalendarEvent[]>;
+  onEventClick: (ev: CalendarEvent) => void;
+}) {
+  const days = weekDays(anchor);
+
+  return (
+    <ul>
+      {days.map((d) => {
+        const isToday = isSameDay(d, today);
+        const dayEvents = eventsByDay.get(dayKey(d)) ?? [];
+        return (
+          <li
+            key={d.toISOString()}
+            className={cn(
+              "border-b border-[var(--border)] flex items-stretch",
+              isToday && "bg-[var(--surface-2)]",
+            )}
+          >
+            {/* Left: dot + day name */}
+            <div className="flex-shrink-0 w-[160px] md:w-[200px] px-5 md:px-8 py-6 flex items-center gap-2">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  isToday
+                    ? "bg-[var(--text)]"
+                    : "bg-[var(--text-subtle)]",
+                )}
+              />
+              <span
+                className={cn(
+                  "text-[15px]",
+                  isToday
+                    ? "font-medium text-[var(--text)]"
+                    : "text-[var(--text)]",
+                )}
+              >
+                {dayName(d)}
+              </span>
+            </div>
+
+            {/* Middle: events list */}
+            <div className="flex-1 min-w-0 py-6 pr-4 flex flex-col justify-center gap-1.5">
+              {dayEvents.map((ev) => {
+                const time = eventTimeLabel(ev.start);
+                return (
+                  <button
+                    key={ev.id}
+                    onClick={() => onEventClick(ev)}
+                    className="text-left flex items-center gap-2 max-w-full px-2 py-1 rounded hover:bg-[var(--hover)] text-[13px] min-w-0"
+                  >
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: ev.color ?? "var(--text)" }}
+                    />
+                    {time && (
+                      <span className="text-[var(--text-muted)] tabular-nums flex-shrink-0">
+                        {time}
+                      </span>
+                    )}
+                    <span className="truncate">{ev.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right: large day number */}
+            <div className="flex-shrink-0 w-[100px] md:w-[140px] flex items-center justify-end pr-5 md:pr-8 py-4">
+              <span
+                className={cn(
+                  "text-5xl md:text-6xl font-medium tabular-nums leading-none",
+                  isToday
+                    ? "text-[var(--text)]"
+                    : "text-[var(--text)]",
+                )}
+              >
+                {d.getDate()}
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// ---------- Month view ----------
+
+const DAY_HEADERS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+function MonthView({
+  anchor,
+  today,
+  eventsByDay,
+  onEventClick,
+}: {
+  anchor: Date;
+  today: Date;
+  eventsByDay: Map<string, CalendarEvent[]>;
+  onEventClick: (ev: CalendarEvent) => void;
+}) {
+  const days = monthGridDays(anchor);
+  const month = anchor.getMonth();
+
+  return (
+    <div className="flex flex-col h-full min-h-[640px]">
+      {/* Column headers */}
+      <div className="grid grid-cols-7 border-b border-[var(--border)]">
+        {DAY_HEADERS.map((h) => (
+          <div
+            key={h}
+            className="px-3 py-2.5 text-[10px] font-medium tracking-[0.08em] text-[var(--text-muted)] border-r border-[var(--border)] last:border-r-0"
+          >
+            {h}
+          </div>
+        ))}
+      </div>
+
+      {/* 6-row × 7-col grid */}
+      <div className="flex-1 grid grid-cols-7 grid-rows-6">
+        {days.map((d) => {
+          const inMonth = d.getMonth() === month;
+          const isToday = isSameDay(d, today);
+          const dayEvents = eventsByDay.get(dayKey(d)) ?? [];
+          return (
+            <DayCell
+              key={d.toISOString()}
+              date={d}
+              inMonth={inMonth}
+              isToday={isToday}
+              events={dayEvents}
+              onEventClick={onEventClick}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DayCell({
+  date,
+  inMonth,
+  isToday,
+  events,
+  onEventClick,
+}: {
+  date: Date;
+  inMonth: boolean;
+  isToday: boolean;
+  events: CalendarEvent[];
+  onEventClick: (ev: CalendarEvent) => void;
+}) {
+  const visible = events.slice(0, 3);
+  const overflow = events.length - visible.length;
+
+  return (
+    <div
+      className={cn(
+        "relative border-r border-b border-[var(--border)] day-cell p-2 flex flex-col gap-1 min-h-[96px]",
+        // Out-of-month cells get a diagonal-stripe background
+        !inMonth && "out-of-month-cell",
+      )}
+    >
+      {/* Date number — circled when today */}
+      <div className="flex items-center justify-start">
+        <span
+          className={cn(
+            "inline-flex items-center justify-center h-6 w-6 rounded-full text-[12px] tabular-nums",
+            isToday && "bg-[var(--text)] text-[var(--surface)] font-medium",
+            !isToday && !inMonth && "text-[var(--text-subtle)]",
+            !isToday && inMonth && "text-[var(--text)]",
+          )}
+        >
+          {date.getDate()}
+        </span>
+      </div>
+
+      {/* Event chips */}
+      <div className="flex-1 min-h-0 flex flex-col gap-0.5 overflow-hidden">
+        {visible.map((ev) => {
+          const time = eventTimeLabel(ev.start);
+          return (
+            <button
+              key={ev.id}
+              onClick={() => onEventClick(ev)}
+              className="w-full text-left px-1.5 py-0.5 rounded text-[10.5px] flex items-center gap-1 hover:bg-[var(--hover)] min-w-0"
+            >
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: ev.color ?? "var(--text)" }}
+              />
+              {time && (
+                <span className="text-[var(--text-muted)] tabular-nums flex-shrink-0">
+                  {time}
+                </span>
+              )}
+              <span className="truncate text-[var(--text)]">{ev.title}</span>
+            </button>
+          );
+        })}
+        {overflow > 0 && (
+          <span className="px-1.5 text-[10.5px] text-[var(--text-muted)]">
+            +{overflow} more
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

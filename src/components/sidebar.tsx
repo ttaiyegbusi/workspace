@@ -10,7 +10,6 @@ import {
   FileText,
   Timer,
   Trophy,
-  Calendar,
   Lock,
   ChevronDown,
   Plus,
@@ -23,6 +22,7 @@ import {
   BookOpen,
   Lightbulb,
   LogOut,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
@@ -34,7 +34,7 @@ const nav = [
   { href: "/", label: "Home", icon: Home },
   { href: "/inbox", label: "Inbox", icon: InboxIcon },
   { href: "/teams", label: "Teams", icon: Users },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/docs", label: "Docs", icon: FileText },
   { href: "/timesheet", label: "Timesheet", icon: Timer },
   { href: "/goals", label: "Goals", icon: Trophy },
@@ -83,7 +83,10 @@ export function Sidebar() {
         />
       </aside>
 
-      <CreateTeamModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateTeamModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </>
   );
 }
@@ -324,7 +327,13 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-function MenuItem({ icon: Icon, label }: { icon: typeof Home; label: string }) {
+function MenuItem({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Home;
+  label: string;
+}) {
   return (
     <button className="w-full px-3 h-9 flex items-center gap-2.5 text-sm hover:bg-[var(--hover)] text-[var(--text)] text-left">
       <Icon size={14} className="text-[var(--text-muted)]" strokeWidth={1.6} />

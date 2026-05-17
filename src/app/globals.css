@@ -187,3 +187,19 @@ ol {
 .animate-toast-in {
   animation: toast-in 180ms ease-out;
 }
+
+/* Calendar: out-of-month cells get a subtle diagonal stripe pattern */
+.out-of-month-cell {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 6px,
+    var(--surface-2) 6px,
+    var(--surface-2) 7px
+  );
+}
+
+/* Remove right border on every 7th day cell (last column of the month grid) */
+.day-cell:nth-child(7n) {
+  border-right: 0;
+}
